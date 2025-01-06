@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="495" height="220" viewBox="0 0 495 220" role="img" aria-label="Token Activity">
+<title>Token Activity</title>
+<style>
+.f{opacity:0;animation:fu 0.70s cubic-bezier(.4,0,.2,1) forwards}
+@keyframes fu{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+.bx{transform:scaleX(0);transform-box:fill-box;transform-origin:left center;animation:gx 0.90s cubic-bezier(.2,.6,.2,1) forwards}
+@keyframes gx{to{transform:scaleX(1)}}
+.by{transform:scaleY(0);transform-box:fill-box;transform-origin:center bottom;animation:gy 0.80s cubic-bezier(.2,.6,.2,1) forwards}
+@keyframes gy{to{transform:scaleY(1)}}
+
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}}
+</style>
+<rect x="0.5" y="0.5" width="494" height="219" rx="8" fill="#0d1117" stroke="#30363d"/>
+
+<g font-family="'Segoe UI',Ubuntu,Sans-Serif">
+<text class="f" x="25" y="33" font-size="16" font-weight="600" fill="#58a6ff">📊 Token Activity</text>
+<text class="f" style="animation-delay:0.12s" x="470" y="33" font-size="12" text-anchor="end" fill="#8b949e">3.15B · $6,276.76 · 30d</text>
+<g>
+<rect class="by" style="animation-delay:0.00s" x="25.0" y="176" width="12.3" height="2" rx="2" fill="#58a6ff"><title>2026-06-03: 0</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.03s" x="39.8" y="140" width="12.3" height="38" rx="2" fill="#58a6ff"><title>2026-06-04: 129M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.06s" x="54.7" y="134" width="12.3" height="44" rx="2" fill="#58a6ff"><title>2026-06-05: 149.6M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.09s" x="69.5" y="176" width="12.3" height="2" rx="2" fill="#58a6ff"><title>2026-06-06: 0</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.12s" x="84.3" y="70" width="12.3" height="108" rx="2" fill="#58a6ff"><title>2026-06-07: 363.5M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.15s" x="99.2" y="130" width="12.3" height="48" rx="2" fill="#58a6ff"><title>2026-06-08: 160.2M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.18s" x="114.0" y="148" width="12.3" height="30" rx="2" fill="#58a6ff"><title>2026-06-09: 99.8M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.21s" x="128.8" y="161" width="12.3" height="17" rx="2" fill="#58a6ff"><title>2026-06-10: 56.4M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.24s" x="143.7" y="148" width="12.3" height="30" rx="2" fill="#58a6ff"><title>2026-06-11: 101M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.27s" x="158.5" y="136" width="12.3" height="42" rx="2" fill="#58a6ff"><title>2026-06-12: 143M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.30s" x="173.3" y="176" width="12.3" height="2" rx="2" fill="#58a6ff"><title>2026-06-13: 0</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.33s" x="188.2" y="176" width="12.3" height="2" rx="2" fill="#58a6ff"><title>2026-06-14: 0</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.36s" x="203.0" y="159" width="12.3" height="19" rx="2" fill="#58a6ff"><title>2026-06-15: 63.5M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.39s" x="217.8" y="142" width="12.3" height="36" rx="2" fill="#58a6ff"><title>2026-06-16: 120.3M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.42s" x="232.7" y="156" width="12.3" height="22" rx="2" fill="#58a6ff"><title>2026-06-17: 73.1M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.45s" x="247.5" y="138" width="12.3" height="40" rx="2" fill="#58a6ff"><title>2026-06-18: 134.7M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.48s" x="262.3" y="96" width="12.3" height="82" rx="2" fill="#58a6ff"><title>2026-06-19: 277M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.51s" x="277.2" y="154" width="12.3" height="24" rx="2" fill="#58a6ff"><title>2026-06-20: 82.4M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.54s" x="292.0" y="154" width="12.3" height="24" rx="2" fill="#58a6ff"><title>2026-06-21: 79.7M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.57s" x="306.8" y="134" width="12.3" height="44" rx="2" fill="#58a6ff"><title>2026-06-22: 148.8M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.60s" x="321.7" y="85" width="12.3" height="93" rx="2" fill="#58a6ff"><title>2026-06-23: 313M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.63s" x="336.5" y="151" width="12.3" height="27" rx="2" fill="#58a6ff"><title>2026-06-24: 90.4M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.66s" x="351.3" y="149" width="12.3" height="29" rx="2" fill="#58a6ff"><title>2026-06-25: 97.3M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.69s" x="366.2" y="141" width="12.3" height="37" rx="2" fill="#58a6ff"><title>2026-06-26: 126.2M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.72s" x="381.0" y="176" width="12.3" height="2" rx="2" fill="#58a6ff"><title>2026-06-27: 0</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.75s" x="395.8" y="176" width="12.3" height="2" rx="2" fill="#58a6ff"><title>2026-06-28: 2.1M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.78s" x="410.7" y="116" width="12.3" height="62" rx="2" fill="#58a6ff"><title>2026-06-29: 209.9M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.81s" x="425.5" y="172" width="12.3" height="6" rx="2" fill="#58a6ff"><title>2026-06-30: 20.6M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.84s" x="440.3" y="148" width="12.3" height="30" rx="2" fill="#58a6ff"><title>2026-07-01: 101.7M</title></rect>
+</g>
+<g>
+<rect class="by" style="animation-delay:0.87s" x="455.2" y="176" width="12.3" height="2" rx="2" fill="#bc8cff"><title>2026-07-02: 6.6M</title></rect>
+</g>
+<line x1="25" y1="179" x2="470" y2="179" stroke="#30363d"/>
+<text x="25" y="196" font-size="10" fill="#8b949e">2026-06-03</text>
+<text x="470" y="196" font-size="10" text-anchor="end" fill="#8b949e">2026-07-02</text>
+</g>
+</svg>
