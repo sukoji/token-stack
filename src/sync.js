@@ -15,8 +15,9 @@ function gh(args, opts = {}) {
 }
 
 // Uploads the rendered SVGs to a gist and returns stable raw URLs that can be
-// embedded in any README. Creates the gist on first run.
-export function syncToGist(files, { gistId, description = "token-stack cards" } = {}) {
+// embedded in any README. Creates the gist on first run (secret by default —
+// raw URLs still work for embedding; pass isPublic to list it publicly).
+export function syncToGist(files, { gistId, isPublic = false, description = "token-stack cards" } = {}) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "token-stack-"));
   const paths = files.map(({ name, content }) => {
     const p = path.join(tmp, name);
@@ -26,7 +27,7 @@ export function syncToGist(files, { gistId, description = "token-stack cards" } 
 
   let id = gistId;
   if (!id) {
-    const url = gh(["gist", "create", "--public", "-d", description, ...paths]);
+    const url = gh(["gist", "create", ...(isPublic ? ["--public"] : []), "-d", description, ...paths]);
     id = url.split("/").pop();
   } else {
     for (const p of paths) {
