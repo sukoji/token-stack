@@ -1,11 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { costOf } from "./pricing.js";
+import { bucketCost } from "./pricing.js";
 
 export function defaultSourceDir() {
   const base = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
   return path.join(base, "projects");
+}
+
+export function defaultHistoryFile() {
+  return path.join(os.homedir(), ".token-stack", "history.json");
 }
 
 function* walkJsonl(dir) {
@@ -87,7 +91,7 @@ function dayKey(ts) {
 }
 
 function emptyBucket() {
-  return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0, cost: 0, count: 0 };
+  return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0, count: 0 };
 }
 
 function add(bucket, e) {
@@ -96,28 +100,71 @@ function add(bucket, e) {
   bucket.cacheRead += e.cacheRead;
   bucket.cacheWrite += e.cacheWrite;
   bucket.total += e.input + e.output + e.cacheRead + e.cacheWrite;
-  bucket.cost += costOf(e);
   bucket.count += 1;
 }
 
-export function aggregate(entries, { days = 30 } = {}) {
-  const totals = emptyBucket();
+const dayTotal = (rec) =>
+  Object.values(rec.models).reduce((a, b) => a + b.total, 0);
+
+// Groups raw entries into one record per calendar day — the unit stored in
+// the history snapshot.
+export function toDayRecords(entries) {
+  const days = {};
+  for (const e of entries) {
+    const day = (days[dayKey(e.ts)] ??= { models: {}, projects: {}, sessions: [] });
+    add((day.models[e.model || "unknown"] ??= emptyBucket()), e);
+    add((day.projects[e.project] ??= emptyBucket()), e);
+    if (e.sessionId && !day.sessions.includes(e.sessionId)) day.sessions.push(e.sessionId);
+  }
+  return days;
+}
+
+// History snapshot: survives Claude Code's transcript cleanup (~30 days).
+// A day is replaced only when the fresh scan has at least as many tokens for
+// it — days that shrank or vanished from disk keep their stored record.
+export function loadHistory(file = defaultHistoryFile()) {
+  try {
+    const h = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (h && h.version === 1 && h.days) return h;
+  } catch {}
+  return { version: 1, days: {} };
+}
+
+export function mergeHistory(history, currentDays) {
+  for (const [day, rec] of Object.entries(currentDays)) {
+    const old = history.days[day];
+    if (!old || dayTotal(rec) >= dayTotal(old)) history.days[day] = rec;
+  }
+  return history;
+}
+
+export function saveHistory(history, file = defaultHistoryFile()) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(history));
+}
+
+export function aggregate(history, { days = 30 } = {}) {
+  const totals = { ...emptyBucket(), cost: 0 };
   const byModel = new Map();
-  const byDayMap = new Map();
   const byProject = new Map();
   const sessions = new Set();
+  const dayKeys = Object.keys(history.days).sort();
 
-  for (const e of entries) {
-    add(totals, e);
-    for (const [map, key] of [
-      [byModel, e.model || "unknown"],
-      [byDayMap, dayKey(e.ts)],
-      [byProject, e.project],
-    ]) {
-      if (!map.has(key)) map.set(key, emptyBucket());
-      add(map.get(key), e);
-    }
-    if (e.sessionId) sessions.add(e.sessionId);
+  const merge = (map, key, b) => {
+    const t = map.get(key) ?? emptyBucket();
+    for (const k of Object.keys(t)) t[k] += b[k];
+    map.set(key, t);
+  };
+
+  for (const day of dayKeys) {
+    const rec = history.days[day];
+    for (const [model, b] of Object.entries(rec.models)) merge(byModel, model, b);
+    for (const [proj, b] of Object.entries(rec.projects)) merge(byProject, proj, b);
+    for (const s of rec.sessions) sessions.add(s);
+  }
+  for (const [model, b] of byModel) {
+    for (const k of Object.keys(emptyBucket())) totals[k] += b[k];
+    totals.cost += bucketCost(model, b);
   }
 
   // Last `days` calendar days, oldest first, empty days included.
@@ -126,32 +173,42 @@ export function aggregate(entries, { days = 30 } = {}) {
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
     const key = dayKey(d);
-    byDay.push({ date: key, ...(byDayMap.get(key) ?? emptyBucket()) });
+    const rec = history.days[key];
+    let total = 0, cost = 0;
+    if (rec) {
+      for (const [model, b] of Object.entries(rec.models)) {
+        total += b.total;
+        cost += bucketCost(model, b);
+      }
+    }
+    byDay.push({ date: key, total, cost });
   }
 
   // Streak of consecutive active days ending today (or yesterday).
   let streak = 0;
   for (let i = 0; ; i++) {
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
-    if (byDayMap.has(dayKey(d))) streak++;
+    if (history.days[dayKey(d)]) streak++;
     else if (i === 0) continue; // today can still be empty
     else break;
   }
 
   const sortDesc = (map) =>
     [...map.entries()]
-      .map(([name, v]) => ({ name, ...v }))
+      .map(([name, v]) => ({ name, ...v, cost: bucketCost(name, v) }))
       .sort((a, b) => b.total - a.total);
 
   return {
     generatedAt: new Date().toISOString(),
     totals,
     byModel: sortDesc(byModel),
-    byProject: sortDesc(byProject),
+    byProject: [...byProject.entries()]
+      .map(([name, v]) => ({ name, ...v }))
+      .sort((a, b) => b.total - a.total),
     byDay,
-    activeDays: byDayMap.size,
+    activeDays: dayKeys.length,
     streak,
     sessions: sessions.size,
-    firstDay: [...byDayMap.keys()].sort()[0] ?? null,
+    firstDay: dayKeys[0] ?? null,
   };
 }

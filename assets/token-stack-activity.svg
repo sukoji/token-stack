@@ -14,7 +14,7 @@
 
 <g font-family="'Segoe UI',Ubuntu,Sans-Serif">
 <text class="f" x="25" y="33" font-size="16" font-weight="600" fill="#58a6ff">📊 Token Activity</text>
-<text class="f" style="animation-delay:0.12s" x="470" y="33" font-size="12" text-anchor="end" fill="#8b949e">3.15B · $2,211.95 · 30d</text>
+<text class="f" style="animation-delay:0.12s" x="470" y="33" font-size="12" text-anchor="end" fill="#8b949e">3.16B · $2,223.92 · 30d</text>
 <g>
 <rect class="by" style="animation-delay:0.00s" x="25.0" y="176" width="12.3" height="2" rx="2" fill="#58a6ff"><title>2026-06-03: 0</title></rect>
 </g>
@@ -103,7 +103,7 @@
 <rect class="by" style="animation-delay:0.84s" x="440.3" y="148" width="12.3" height="30" rx="2" fill="#58a6ff"><title>2026-07-01: 101.7M</title></rect>
 </g>
 <g>
-<rect class="by" style="animation-delay:0.87s" x="455.2" y="175" width="12.3" height="3" rx="2" fill="#bc8cff"><title>2026-07-02: 10.2M</title></rect>
+<rect class="by" style="animation-delay:0.87s" x="455.2" y="172" width="12.3" height="6" rx="2" fill="#bc8cff"><title>2026-07-02: 20.1M</title></rect>
 </g>
 <line x1="25" y1="179" x2="470" y2="179" stroke="#30363d"/>
 <text x="25" y="196" font-size="10" fill="#8b949e">2026-06-03</text>

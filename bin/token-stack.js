@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
-import { collectEntries, aggregate, defaultSourceDir } from "../src/collect.js";
+import {
+  collectEntries, toDayRecords, loadHistory, mergeHistory, saveHistory,
+  aggregate, defaultSourceDir, defaultHistoryFile,
+} from "../src/collect.js";
 import { CARDS, formatTokens, formatCost } from "../src/render.js";
 import { THEMES } from "../src/themes.js";
 import { syncToGist } from "../src/sync.js";
@@ -26,6 +29,8 @@ Options:
   --title <text>    custom card title
   -o, --out <path>  output file or directory             (default: .)
   --source <dir>    Claude data dir                      (default: ~/.claude/projects)
+  --history <file>  snapshot file for all-time stats     (default: ~/.token-stack/history.json)
+  --no-history      current transcripts only, no snapshot read/write
   --gist <id>       existing gist to update (sync)
   --public          make the created gist public (sync; default: secret)
   -h, --help        show this help
@@ -41,6 +46,8 @@ function parseArgs(argv) {
     anim: true,
     out: ".",
     source: defaultSourceDir(),
+    historyFile: defaultHistoryFile(),
+    history: true,
   };
   const args = [...argv];
   if (args[0] && !args[0].startsWith("-")) opts.command = args.shift();
@@ -55,6 +62,8 @@ function parseArgs(argv) {
       case "--title": opts.title = args.shift(); break;
       case "-o": case "--out": opts.out = args.shift(); break;
       case "--source": opts.source = args.shift(); break;
+      case "--history": opts.historyFile = args.shift(); break;
+      case "--no-history": opts.history = false; break;
       case "--gist": opts.gist = args.shift(); break;
       case "--public": opts.public = true; break;
       case "-h": case "--help": console.log(HELP); process.exit(0);
@@ -84,12 +93,15 @@ function renderCards(stats, opts) {
 
 const opts = parseArgs(process.argv.slice(2));
 const entries = collectEntries(opts.source);
-if (entries.length === 0) {
+const history = opts.history ? loadHistory(opts.historyFile) : { version: 1, days: {} };
+mergeHistory(history, toDayRecords(entries));
+if (Object.keys(history.days).length === 0) {
   console.error(`No usage data found in ${opts.source}`);
   console.error("Is Claude Code installed and has it been used on this machine?");
   process.exit(1);
 }
-const stats = aggregate(entries, { days: opts.days });
+if (opts.history) saveHistory(history, opts.historyFile);
+const stats = aggregate(history, { days: opts.days });
 
 switch (opts.command) {
   case "generate": {

@@ -23,13 +23,13 @@ export function priceFor(model) {
   };
 }
 
-export function costOf({ model, input, output, cacheRead, cacheWrite }) {
+export function bucketCost(model, b) {
   const p = priceFor(model || "");
   return (
-    (input * p.input +
-      output * p.output +
-      cacheRead * p.cacheRead +
-      cacheWrite * p.cacheWrite) /
+    (b.input * p.input +
+      b.output * p.output +
+      b.cacheRead * p.cacheRead +
+      b.cacheWrite * p.cacheWrite) /
     1e6
   );
 }
