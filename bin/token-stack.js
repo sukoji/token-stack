@@ -22,6 +22,7 @@ Commands:
 
 Options:
   --card <name>     summary | activity | models | all   (default: summary)
+  --compact         340x200 summary card (matches github-profile-summary-cards)
   --theme <name>    ${Object.keys(THEMES).join(" | ")}   (default: dark)
   --days <n>        window for the activity chart        (default: 30)
   --speed <x>       animation speed multiplier           (default: 1)
@@ -59,6 +60,7 @@ function parseArgs(argv) {
       case "--days": opts.days = Math.max(1, parseInt(args.shift(), 10) || 30); break;
       case "--speed": opts.speed = Math.max(0.1, parseFloat(args.shift()) || 1); break;
       case "--no-anim": opts.anim = false; break;
+      case "--compact": opts.compact = true; break;
       case "--title": opts.title = args.shift(); break;
       case "-o": case "--out": opts.out = args.shift(); break;
       case "--source": opts.source = args.shift(); break;
@@ -84,8 +86,9 @@ function renderCards(stats, opts) {
       console.error(`Unknown card "${name}". Available: ${Object.keys(CARDS).join(", ")}, all`);
       process.exit(1);
     }
+    const suffix = opts.compact && name === "summary" ? "-compact" : "";
     return {
-      name: `token-stack-${name}.svg`,
+      name: `token-stack-${name}${suffix}.svg`,
       content: render(stats, opts),
     };
   });
