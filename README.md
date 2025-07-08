@@ -69,6 +69,7 @@ animations play just fine — no JavaScript, no backend, $0 forever.
 |---|---|---|
 | `--card` | `summary` | `summary` \| `activity` \| `models` \| `all` |
 | `--compact` | | 340×200 summary — same size as [github-profile-summary-cards](https://github.com/vn7n24fzkq/github-profile-summary-cards), sits next to them without height mismatch |
+| `--chart` | `bars` | compact trend style: `bars` \| `line` \| `grass` (GitHub-style heatmap; defaults to a 17-week window) |
 | `--theme` | `dark` | `dark` \| `light` \| `dracula` \| `tokyonight` |
 | `--days` | `30` | window for the activity chart |
 | `--speed` | `1` | animation speed multiplier (`2` = twice as fast) |

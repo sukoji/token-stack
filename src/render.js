@@ -54,34 +54,89 @@ function resolveTheme(name) {
   return THEMES[name] ?? THEMES.dark;
 }
 
+// Chart bodies for the compact card. Each fills the box {x, y, w, h} from
+// stats.byDay and returns { svg, extraCss }.
+function chartBars(days, t, box, { anim, speed }) {
+  const { x, y, w, h } = box;
+  const max = Math.max(...days.map((d) => d.total), 1);
+  const bw = w / days.length - 2;
+  const svg = days
+    .map((d, i) => {
+      const bh = Math.max(2, Math.round((d.total / max) * h));
+      const bx = x + i * (w / days.length);
+      return `<rect class="by" style="${delay(i, 0.025, speed)}" x="${bx.toFixed(1)}" y="${y + h - bh}" width="${bw.toFixed(1)}" height="${bh}" rx="2" fill="${i === days.length - 1 ? t.big[1] : t.bars[0]}"/>`;
+    })
+    .join("\n");
+  return { svg: svg + `\n<line x1="${x}" y1="${y + h + 1}" x2="${x + w}" y2="${y + h + 1}" stroke="${t.border}"/>`, extraCss: "" };
+}
+
+function chartLine(days, t, box, { anim, speed }) {
+  const { x, y, w, h } = box;
+  const max = Math.max(...days.map((d) => d.total), 1);
+  const pt = (d, i) =>
+    `${(x + (i / (days.length - 1)) * w).toFixed(1)},${(y + h - (d.total / max) * (h - 4)).toFixed(1)}`;
+  const points = days.map(pt).join(" ");
+  const [lx, ly] = pt(days[days.length - 1], days.length - 1).split(",");
+  const line = anim
+    ? `<polyline class="draw" pathLength="1" points="${points}" fill="none" stroke="${t.bars[0]}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`
+    : `<polyline points="${points}" fill="none" stroke="${t.bars[0]}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  const svg = `
+<defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="${t.bars[0]}" stop-opacity="0.35"/><stop offset="100%" stop-color="${t.bars[0]}" stop-opacity="0"/>
+</linearGradient></defs>
+<polygon class="f" style="${delay(6, 0.12, speed)}" points="${x},${y + h} ${points} ${x + w},${y + h}" fill="url(#area)"/>
+${line}
+<circle class="f" style="${delay(7, 0.12, speed)}" cx="${lx}" cy="${ly}" r="3.5" fill="${t.big[1]}"/>
+<line x1="${x}" y1="${y + h + 1}" x2="${x + w}" y2="${y + h + 1}" stroke="${t.border}"/>`;
+  const extraCss = anim
+    ? `.draw{stroke-dasharray:1;stroke-dashoffset:1;animation:dr ${(1.2 / speed).toFixed(2)}s cubic-bezier(.4,0,.2,1) forwards ${(0.2 / speed).toFixed(2)}s}\n@keyframes dr{to{stroke-dashoffset:0}}`
+    : "";
+  return { svg, extraCss };
+}
+
+function chartGrass(days, t, box, { anim, speed }) {
+  const { x, y, w, h } = box;
+  // GitHub-style: columns are weeks, rows are weekdays (Sun-Sat).
+  const firstDow = new Date(days[0].date + "T00:00:00").getDay();
+  const weeks = Math.ceil((days.length + firstDow) / 7);
+  const cell = Math.min(Math.floor(h / 7) - 2, Math.floor(w / weeks) - 2, 12);
+  const step = cell + 3;
+  const gridW = weeks * step - 3;
+  const ox = x + Math.max(0, (w - gridW) / 2);
+  const nonzero = days.filter((d) => d.total > 0).map((d) => d.total).sort((a, b) => a - b);
+  const q = (p) => nonzero[Math.min(nonzero.length - 1, Math.floor(p * nonzero.length))] ?? 1;
+  const [q1, q2, q3] = [q(0.25), q(0.5), q(0.75)];
+  const svg = days
+    .map((d, i) => {
+      const slot = i + firstDow;
+      const cx = ox + Math.floor(slot / 7) * step;
+      const cy = y + (slot % 7) * step;
+      const op = d.total === 0 ? 0 : d.total <= q1 ? 0.3 : d.total <= q2 ? 0.55 : d.total <= q3 ? 0.8 : 1;
+      const fill = op === 0 ? `fill="${t.track}"` : `fill="${t.bars[0]}" fill-opacity="${op}"`;
+      return `<rect class="f" style="${delay(i, 0.012, speed)}" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" width="${cell}" height="${cell}" rx="2.5" ${fill}><title>${d.date}: ${formatTokens(d.total)}</title></rect>`;
+    })
+    .join("\n");
+  return { svg, extraCss: "" };
+}
+
+const CHARTS = { bars: chartBars, line: chartLine, grass: chartGrass };
+
 // 340x200 — same footprint as github-profile-summary-cards, so the two sit
-// side by side in a README without height mismatch.
+// side by side in a README without height mismatch. `chart` picks how the
+// daily trend is drawn: bars (default) | line | grass.
 export function renderSummaryCompact(stats, opts = {}) {
-  const { speed = 1, anim = true, title = "Token Stack" } = opts;
+  const { speed = 1, anim = true, title = "Token Stack", chart = "bars" } = opts;
   const t = resolveTheme(opts.theme);
   const W = 340, H = 200;
   const { totals } = stats;
+  const days = stats.byDay;
 
-  const rows = [
-    ["Input", totals.input],
-    ["Output", totals.output],
-    ["Cache read", totals.cacheRead],
-    ["Cache write", totals.cacheWrite],
-  ];
-  const maxRow = Math.max(...rows.map((r) => r[1]), 1);
-  const rowsSvg = rows
-    .map(([label, val], i) => {
-      const y = 108 + i * 23;
-      const w = Math.max(2, Math.round((val / maxRow) * 138));
-      return `<g class="f" style="${delay(i + 3, 0.12, speed)}">
-<text x="20" y="${y + 4}" font-size="10" fill="${t.subtext}">${label}</text>
-<rect x="86" y="${y - 3}" width="138" height="5" rx="2.5" fill="${t.track}"/>
-<rect class="bx" style="${delay(i + 3, 0.12, speed)}" x="86" y="${y - 3}" width="${w}" height="5" rx="2.5" fill="${t.bars[i]}"/>
-<text x="${W - 20}" y="${y + 4}" font-size="10.5" font-weight="600" fill="${t.text}" text-anchor="end">${formatTokens(val)}</text>
-</g>`;
-    })
-    .join("\n");
+  const drawChart = CHARTS[chart];
+  if (!drawChart) throw new Error(`Unknown chart "${chart}". Available: ${Object.keys(CHARTS).join(", ")}`);
+  const box = { x: 20, y: 100, w: W - 40, h: 72 };
+  const { svg: chartSvg, extraCss } = drawChart(days, t, box, { anim, speed });
 
+  const windowTotal = days.reduce((a, d) => a + d.total, 0);
   const body = `
 <defs><linearGradient id="big" x1="0" y1="0" x2="1" y2="0">
 <stop offset="0%" stop-color="${t.big[0]}"/><stop offset="100%" stop-color="${t.big[1]}"/>
@@ -90,9 +145,11 @@ export function renderSummaryCompact(stats, opts = {}) {
 <text class="f" x="20" y="27" font-size="14" font-weight="600" fill="${t.title}">⚡ ${esc(title)}</text>
 <text class="f" style="${delay(1, 0.12, speed)}" x="20" y="66" font-size="30" font-weight="800" fill="url(#big)">${formatTokens(totals.total)}</text>
 <text class="f" style="${delay(2, 0.12, speed)}" x="20" y="85" font-size="10.5" fill="${t.subtext}">tokens all time · est. ${formatCost(totals.cost)} · 🔥 ${stats.streak}d streak</text>
-${rowsSvg}
+<text class="f" style="${delay(3, 0.12, speed)}" x="${W - 20}" y="97" font-size="9.5" text-anchor="end" fill="${t.subtext}">last ${days.length}d · ${formatTokens(windowTotal)}</text>
+${chartSvg}
+<text class="f" style="${delay(8, 0.12, speed)}" x="20" y="${H - 10}" font-size="9.5" fill="${t.subtext}">in ${formatTokens(totals.input)} · out ${formatTokens(totals.output)} · cache ${formatTokens(totals.cacheRead + totals.cacheWrite)}</text>
 </g>`;
-  return frame(W, H, t, title, body, styles({ anim, speed }));
+  return frame(W, H, t, title, body, styles({ anim, speed }, extraCss));
 }
 
 export function renderSummary(stats, opts = {}) {
@@ -114,7 +171,7 @@ export function renderSummary(stats, opts = {}) {
       const y = 128 + i * 25;
       const w = Math.max(2, Math.round((val / maxRow) * 108));
       return `<g class="f" style="${delay(i + 3, 0.12, speed)}">
-<text x="25" y="${y + 5}" font-size="11" fill="${t.subtext}">${label}</text>
+<text x="25" y="${y + 5}" font-size="11" fill="${t.text}">${label}</text>
 <rect x="92" y="${y - 3}" width="108" height="6" rx="3" fill="${t.track}"/>
 <rect class="bx" style="${delay(i + 3, 0.12, speed)}" x="92" y="${y - 3}" width="${w}" height="6" rx="3" fill="${t.bars[i]}"/>
 <text x="255" y="${y + 5}" font-size="11" font-weight="600" fill="${t.text}" text-anchor="end">${formatTokens(val)}</text>

@@ -23,6 +23,7 @@ Commands:
 Options:
   --card <name>     summary | activity | models | all   (default: summary)
   --compact         340x200 summary card (matches github-profile-summary-cards)
+  --chart <name>    compact trend style: bars | line | grass   (default: bars)
   --theme <name>    ${Object.keys(THEMES).join(" | ")}   (default: dark)
   --days <n>        window for the activity chart        (default: 30)
   --speed <x>       animation speed multiplier           (default: 1)
@@ -57,10 +58,11 @@ function parseArgs(argv) {
     switch (a) {
       case "--card": opts.card = args.shift(); break;
       case "--theme": opts.theme = args.shift(); break;
-      case "--days": opts.days = Math.max(1, parseInt(args.shift(), 10) || 30); break;
+      case "--days": opts.days = Math.max(1, parseInt(args.shift(), 10) || 30); opts.daysSet = true; break;
       case "--speed": opts.speed = Math.max(0.1, parseFloat(args.shift()) || 1); break;
       case "--no-anim": opts.anim = false; break;
       case "--compact": opts.compact = true; break;
+      case "--chart": opts.chart = args.shift(); break;
       case "--title": opts.title = args.shift(); break;
       case "-o": case "--out": opts.out = args.shift(); break;
       case "--source": opts.source = args.shift(); break;
@@ -75,6 +77,8 @@ function parseArgs(argv) {
         process.exit(1);
     }
   }
+  // A 30-day grass grid is only ~5 columns; default to 17 weeks like GitHub.
+  if (opts.chart === "grass" && !opts.daysSet) opts.days = 119;
   return opts;
 }
 
