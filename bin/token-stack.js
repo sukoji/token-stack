@@ -114,7 +114,7 @@ switch (opts.command) {
       console.log(`![token-stack](${raw})`);
     }
     if (!opts.gist) {
-      console.log(`\nNext time, update in place with:\n  npx token-stack sync --gist ${res.gistId}`);
+      console.log(`\nNext time, update in place with:\n  npx github:sukoji/token-stack sync --gist ${res.gistId}`);
     }
     break;
   }
