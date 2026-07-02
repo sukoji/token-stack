@@ -27,6 +27,7 @@ Options:
   -o, --out <path>  output file or directory             (default: .)
   --source <dir>    Claude data dir                      (default: ~/.claude/projects)
   --gist <id>       existing gist to update (sync)
+  --public          make the created gist public (sync; default: secret)
   -h, --help        show this help
 `;
 
@@ -55,6 +56,7 @@ function parseArgs(argv) {
       case "-o": case "--out": opts.out = args.shift(); break;
       case "--source": opts.source = args.shift(); break;
       case "--gist": opts.gist = args.shift(); break;
+      case "--public": opts.public = true; break;
       case "-h": case "--help": console.log(HELP); process.exit(0);
       default:
         console.error(`Unknown option: ${a}\n`);
@@ -105,7 +107,7 @@ switch (opts.command) {
   }
   case "sync": {
     const cards = renderCards(stats, opts);
-    const res = syncToGist(cards, { gistId: opts.gist });
+    const res = syncToGist(cards, { gistId: opts.gist, isPublic: opts.public });
     console.log(`gist: https://gist.github.com/${res.gistId}`);
     console.log("\nEmbed in any README:\n");
     for (const { raw } of res.urls) {
