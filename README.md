@@ -14,6 +14,7 @@ the SVG you choose to publish.
 <p align="center">
   <img src="./assets/token-stack-activity.svg" alt="activity card"/>
   <img src="./assets/token-stack-models.svg" alt="models card"/>
+  <img src="./assets/token-stack-summary-compact.svg" alt="compact summary card"/>
 </p>
 
 ## Quick start
@@ -62,6 +63,7 @@ animations play just fine — no JavaScript, no backend, $0 forever.
 | flag | default | notes |
 |---|---|---|
 | `--card` | `summary` | `summary` \| `activity` \| `models` \| `all` |
+| `--compact` | | 340×200 summary — same size as [github-profile-summary-cards](https://github.com/vn7n24fzkq/github-profile-summary-cards), sits next to them without height mismatch |
 | `--theme` | `dark` | `dark` \| `light` \| `dracula` \| `tokyonight` |
 | `--days` | `30` | window for the activity chart |
 | `--speed` | `1` | animation speed multiplier (`2` = twice as fast) |
