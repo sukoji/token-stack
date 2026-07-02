@@ -2,6 +2,11 @@
 
 **Animated token-usage cards for your GitHub README — no server required.**
 
+[![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](./LICENSE)
+[![node](https://img.shields.io/badge/node-%E2%89%A518-3fb950?style=flat-square)](https://nodejs.org)
+[![zero dependencies](https://img.shields.io/badge/dependencies-0-8b949e?style=flat-square)](./package.json)
+[![live demo](https://img.shields.io/badge/live%20demo-sukoji-58a6ff?style=flat-square)](https://github.com/sukoji)
+
 `token-stack` reads the session transcripts Claude Code already keeps on your
 machine (`~/.claude/projects/**/*.jsonl`), aggregates your token usage, and
 renders it as animated SVG cards you can embed anywhere — your profile README,
