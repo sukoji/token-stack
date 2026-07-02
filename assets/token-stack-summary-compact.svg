@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="200" viewBox="0 0 340 200" role="img" aria-label="Token Stack">
+<title>Token Stack</title>
+<style>
+.f{opacity:0;animation:fu 0.70s cubic-bezier(.4,0,.2,1) forwards}
+@keyframes fu{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+.bx{transform:scaleX(0);transform-box:fill-box;transform-origin:left center;animation:gx 0.90s cubic-bezier(.2,.6,.2,1) forwards}
+@keyframes gx{to{transform:scaleX(1)}}
+.by{transform:scaleY(0);transform-box:fill-box;transform-origin:center bottom;animation:gy 0.80s cubic-bezier(.2,.6,.2,1) forwards}
+@keyframes gy{to{transform:scaleY(1)}}
+
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}}
+</style>
+<rect x="0.5" y="0.5" width="339" height="199" rx="8" fill="#0d1117" stroke="#30363d"/>
+
+<defs><linearGradient id="big" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#bc8cff"/>
+</linearGradient></defs>
+<g font-family="'Segoe UI',Ubuntu,Sans-Serif">
+<text class="f" x="20" y="27" font-size="14" font-weight="600" fill="#58a6ff">⚡ Token Stack</text>
+<text class="f" style="animation-delay:0.12s" x="20" y="66" font-size="30" font-weight="800" fill="url(#big)">3.35B</text>
+<text class="f" style="animation-delay:0.24s" x="20" y="85" font-size="10.5" fill="#8b949e">tokens all time · est. $2,374.87 · 🔥 5d streak</text>
+<g class="f" style="animation-delay:0.36s">
+<text x="20" y="112" font-size="10" fill="#8b949e">Input</text>
+<rect x="86" y="105" width="138" height="5" rx="2.5" fill="#21262d"/>
+<rect class="bx" style="animation-delay:0.36s" x="86" y="105" width="2" height="5" rx="2.5" fill="#58a6ff"/>
+<text x="320" y="112" font-size="10.5" font-weight="600" fill="#c9d1d9" text-anchor="end">1.4M</text>
+</g>
+<g class="f" style="animation-delay:0.48s">
+<text x="20" y="135" font-size="10" fill="#8b949e">Output</text>
+<rect x="86" y="128" width="138" height="5" rx="2.5" fill="#21262d"/>
+<rect class="bx" style="animation-delay:0.48s" x="86" y="128" width="2" height="5" rx="2.5" fill="#3fb950"/>
+<text x="320" y="135" font-size="10.5" font-weight="600" fill="#c9d1d9" text-anchor="end">9.3M</text>
+</g>
+<g class="f" style="animation-delay:0.60s">
+<text x="20" y="158" font-size="10" fill="#8b949e">Cache read</text>
+<rect x="86" y="151" width="138" height="5" rx="2.5" fill="#21262d"/>
+<rect class="bx" style="animation-delay:0.60s" x="86" y="151" width="138" height="5" rx="2.5" fill="#d29922"/>
+<text x="320" y="158" font-size="10.5" font-weight="600" fill="#c9d1d9" text-anchor="end">3.26B</text>
+</g>
+<g class="f" style="animation-delay:0.72s">
+<text x="20" y="181" font-size="10" fill="#8b949e">Cache write</text>
+<rect x="86" y="174" width="138" height="5" rx="2.5" fill="#21262d"/>
+<rect class="bx" style="animation-delay:0.72s" x="86" y="174" width="3" height="5" rx="2.5" fill="#f85149"/>
+<text x="320" y="181" font-size="10.5" font-weight="600" fill="#c9d1d9" text-anchor="end">80.7M</text>
+</g>
+</g>
+</svg>

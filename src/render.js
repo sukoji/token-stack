@@ -54,7 +54,49 @@ function resolveTheme(name) {
   return THEMES[name] ?? THEMES.dark;
 }
 
+// 340x200 — same footprint as github-profile-summary-cards, so the two sit
+// side by side in a README without height mismatch.
+export function renderSummaryCompact(stats, opts = {}) {
+  const { speed = 1, anim = true, title = "Token Stack" } = opts;
+  const t = resolveTheme(opts.theme);
+  const W = 340, H = 200;
+  const { totals } = stats;
+
+  const rows = [
+    ["Input", totals.input],
+    ["Output", totals.output],
+    ["Cache read", totals.cacheRead],
+    ["Cache write", totals.cacheWrite],
+  ];
+  const maxRow = Math.max(...rows.map((r) => r[1]), 1);
+  const rowsSvg = rows
+    .map(([label, val], i) => {
+      const y = 108 + i * 23;
+      const w = Math.max(2, Math.round((val / maxRow) * 138));
+      return `<g class="f" style="${delay(i + 3, 0.12, speed)}">
+<text x="20" y="${y + 4}" font-size="10" fill="${t.subtext}">${label}</text>
+<rect x="86" y="${y - 3}" width="138" height="5" rx="2.5" fill="${t.track}"/>
+<rect class="bx" style="${delay(i + 3, 0.12, speed)}" x="86" y="${y - 3}" width="${w}" height="5" rx="2.5" fill="${t.bars[i]}"/>
+<text x="${W - 20}" y="${y + 4}" font-size="10.5" font-weight="600" fill="${t.text}" text-anchor="end">${formatTokens(val)}</text>
+</g>`;
+    })
+    .join("\n");
+
+  const body = `
+<defs><linearGradient id="big" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0%" stop-color="${t.big[0]}"/><stop offset="100%" stop-color="${t.big[1]}"/>
+</linearGradient></defs>
+<g font-family="'Segoe UI',Ubuntu,Sans-Serif">
+<text class="f" x="20" y="27" font-size="14" font-weight="600" fill="${t.title}">⚡ ${esc(title)}</text>
+<text class="f" style="${delay(1, 0.12, speed)}" x="20" y="66" font-size="30" font-weight="800" fill="url(#big)">${formatTokens(totals.total)}</text>
+<text class="f" style="${delay(2, 0.12, speed)}" x="20" y="85" font-size="10.5" fill="${t.subtext}">tokens all time · est. ${formatCost(totals.cost)} · 🔥 ${stats.streak}d streak</text>
+${rowsSvg}
+</g>`;
+  return frame(W, H, t, title, body, styles({ anim, speed }));
+}
+
 export function renderSummary(stats, opts = {}) {
+  if (opts.compact) return renderSummaryCompact(stats, opts);
   const { speed = 1, anim = true, title = "Token Stack · Claude Code" } = opts;
   const t = resolveTheme(opts.theme);
   const W = 495, H = 250;

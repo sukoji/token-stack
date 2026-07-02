@@ -31,7 +31,11 @@ export function syncToGist(files, { gistId, isPublic = false, description = "tok
     id = url.split("/").pop();
   } else {
     for (const p of paths) {
-      gh(["gist", "edit", id, "-f", path.basename(p), p]);
+      try {
+        gh(["gist", "edit", id, "-f", path.basename(p), p]);
+      } catch {
+        gh(["gist", "edit", id, "--add", p]); // file not in the gist yet
+      }
     }
   }
   const login = gh(["api", "user", "-q", ".login"]);
