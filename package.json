@@ -1,0 +1,25 @@
+{
+  "name": "token-stack",
+  "version": "0.1.0",
+  "description": "Animated token-usage cards for your GitHub README, generated from your local Claude Code sessions. No server required.",
+  "type": "module",
+  "bin": {
+    "token-stack": "bin/token-stack.js"
+  },
+  "files": [
+    "bin",
+    "src"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "claude-code",
+    "token-usage",
+    "github-readme",
+    "svg",
+    "dashboard"
+  ],
+  "repository": "github:sukoji/token-stack",
+  "license": "MIT"
+}
