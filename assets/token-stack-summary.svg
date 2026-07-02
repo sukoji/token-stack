@@ -17,8 +17,8 @@
 </linearGradient></defs>
 <g font-family="'Segoe UI',Ubuntu,Sans-Serif">
 <text class="f" x="25" y="33" font-size="16" font-weight="600" fill="#58a6ff">⚡ Token Stack · Claude Code</text>
-<text class="f" style="animation-delay:0.12s" x="25" y="76" font-size="34" font-weight="800" fill="url(#big)">3.33B</text>
-<text class="f" style="animation-delay:0.24s" x="25" y="97" font-size="12" fill="#8b949e">tokens all time · est. $2,354.65</text>
+<text class="f" style="animation-delay:0.12s" x="25" y="76" font-size="34" font-weight="800" fill="url(#big)">3.34B</text>
+<text class="f" style="animation-delay:0.24s" x="25" y="97" font-size="12" fill="#8b949e">tokens all time · est. $2,366.62</text>
 <g class="f" style="animation-delay:0.36s">
 <text x="25" y="133" font-size="11" fill="#8b949e">Input</text>
 <rect x="92" y="125" width="108" height="6" rx="3" fill="#21262d"/>
@@ -35,15 +35,15 @@
 <text x="25" y="183" font-size="11" fill="#8b949e">Cache read</text>
 <rect x="92" y="175" width="108" height="6" rx="3" fill="#21262d"/>
 <rect class="bx" style="animation-delay:0.60s" x="92" y="175" width="108" height="6" rx="3" fill="#d29922"/>
-<text x="255" y="183" font-size="11" font-weight="600" fill="#c9d1d9" text-anchor="end">3.24B</text>
+<text x="255" y="183" font-size="11" font-weight="600" fill="#c9d1d9" text-anchor="end">3.25B</text>
 </g>
 <g class="f" style="animation-delay:0.72s">
 <text x="25" y="208" font-size="11" fill="#8b949e">Cache write</text>
 <rect x="92" y="200" width="108" height="6" rx="3" fill="#21262d"/>
 <rect class="bx" style="animation-delay:0.72s" x="92" y="200" width="3" height="6" rx="3" fill="#f85149"/>
-<text x="255" y="208" font-size="11" font-weight="600" fill="#c9d1d9" text-anchor="end">80.2M</text>
+<text x="255" y="208" font-size="11" font-weight="600" fill="#c9d1d9" text-anchor="end">80.7M</text>
 </g>
-<text class="f" style="animation-delay:0.36s" x="285" y="112" font-size="11" fill="#8b949e">last 14 days · 1.56B</text>
+<text class="f" style="animation-delay:0.36s" x="285" y="112" font-size="11" fill="#8b949e">last 14 days · 1.57B</text>
 <rect class="by" style="animation-delay:0.20s" x="285.0" y="132" width="10.2" height="73" rx="2" fill="#58a6ff"/>
 <rect class="by" style="animation-delay:0.25s" x="298.2" y="183" width="10.2" height="22" rx="2" fill="#58a6ff"/>
 <rect class="by" style="animation-delay:0.30s" x="311.4" y="184" width="10.2" height="21" rx="2" fill="#58a6ff"/>
@@ -57,7 +57,7 @@
 <rect class="by" style="animation-delay:0.70s" x="417.1" y="150" width="10.2" height="55" rx="2" fill="#58a6ff"/>
 <rect class="by" style="animation-delay:0.75s" x="430.4" y="200" width="10.2" height="5" rx="2" fill="#58a6ff"/>
 <rect class="by" style="animation-delay:0.80s" x="443.6" y="178" width="10.2" height="27" rx="2" fill="#58a6ff"/>
-<rect class="by" style="animation-delay:0.85s" x="456.8" y="202" width="10.2" height="3" rx="2" fill="#bc8cff"/>
+<rect class="by" style="animation-delay:0.85s" x="456.8" y="200" width="10.2" height="5" rx="2" fill="#bc8cff"/>
 <line x1="285" y1="206" x2="470" y2="206" stroke="#30363d"/>
 <text class="f" style="animation-delay:0.96s" x="25" y="232" font-size="11" fill="#8b949e">🔥 5 day streak · 36 active days · opus-4.8</text>
 </g>

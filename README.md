@@ -69,9 +69,21 @@ animations play just fine — no JavaScript, no backend, $0 forever.
 | `--title` | | custom card title |
 | `-o, --out` | `.` | output file or directory |
 | `--source` | `~/.claude/projects` | Claude Code data dir |
+| `--history` | `~/.token-stack/history.json` | snapshot file (see below) |
+| `--no-history` | | current transcripts only |
 | `--gist` | | existing gist id to update in place |
+| `--public` | | make the created gist public (default: secret) |
 
 Animations respect `prefers-reduced-motion`.
+
+## True all-time stats (snapshots)
+
+Claude Code deletes transcripts after ~30 days, so a plain scan can only see a
+rolling window. Every run therefore merges the current scan into a local
+snapshot (`~/.token-stack/history.json`, per-day × per-model aggregates —
+a few KB, no message content). Days that vanish from disk keep their stored
+numbers, so "all time" keeps growing as long as you run `generate`/`sync`
+once in a while. Delete the file to reset.
 
 ## Keeping cards fresh
 
