@@ -9,10 +9,12 @@ import { CARDS, formatTokens, formatCost } from "../src/render.js";
 import { THEMES } from "../src/themes.js";
 import { syncToGist } from "../src/sync.js";
 
+const PROVIDERS = ["auto", "claude"];
+
 const HELP = `token-stack — animated token-usage cards from your local Claude Code sessions
 
 Usage:
-  npx token-stack [command] [options]
+  npx @sukojin/token-stack [command] [options]
 
 Commands:
   generate    Write SVG card(s) to disk (default)
@@ -21,21 +23,28 @@ Commands:
   json        Print aggregated stats as JSON
 
 Options:
-  --card <name>     summary | activity | models | all   (default: summary)
+  --card <name>     summary | activity | models | agents | all   (default: summary)
   --compact         340x200 summary card (matches github-profile-summary-cards)
   --chart <name>    compact trend style: bars | line | grass   (default: bars)
   --theme <name>    ${Object.keys(THEMES).join(" | ")}   (default: dark)
   --days <n>        window for the activity chart        (default: 30)
   --speed <x>       animation speed multiplier           (default: 1)
+  --scale <x>       intrinsic SVG scale, preserves aspect ratio (default: 1)
   --no-anim         render static cards
   --title <text>    custom card title
   -o, --out <path>  output file or directory             (default: .)
   --source <dir>    Claude data dir                      (default: ~/.claude/projects)
+  --provider <name> ${PROVIDERS.join(" | ")}                       (default: auto)
+  --agent-source <name:dir>  add a JSONL-compatible agent data directory (repeatable)
   --history <file>  snapshot file for all-time stats     (default: ~/.token-stack/history.json)
   --no-history      current transcripts only, no snapshot read/write
+  --privacy <mode>  public | private (hide project names in JSON)   (default: public)
   --gist <id>       existing gist to update (sync)
   --public          make the created gist public (sync; default: secret)
   -h, --help        show this help
+
+Setup:
+  init [--gist <id>]  Print a safe Claude Code SessionEnd hook and README embed.
 `;
 
 function parseArgs(argv) {
@@ -45,11 +54,15 @@ function parseArgs(argv) {
     theme: "dark",
     days: 30,
     speed: 1,
+    scale: 1,
     anim: true,
     out: ".",
     source: defaultSourceDir(),
     historyFile: defaultHistoryFile(),
     history: true,
+    provider: "auto",
+    privacy: "public",
+    agentSources: [],
   };
   const args = [...argv];
   if (args[0] && !args[0].startsWith("-")) opts.command = args.shift();
@@ -60,14 +73,18 @@ function parseArgs(argv) {
       case "--theme": opts.theme = args.shift(); break;
       case "--days": opts.days = Math.max(1, parseInt(args.shift(), 10) || 30); opts.daysSet = true; break;
       case "--speed": opts.speed = Math.max(0.1, parseFloat(args.shift()) || 1); break;
+      case "--scale": opts.scale = Math.max(0.25, Math.min(3, parseFloat(args.shift()) || 1)); break;
       case "--no-anim": opts.anim = false; break;
       case "--compact": opts.compact = true; break;
       case "--chart": opts.chart = args.shift(); break;
       case "--title": opts.title = args.shift(); break;
       case "-o": case "--out": opts.out = args.shift(); break;
       case "--source": opts.source = args.shift(); break;
+      case "--provider": opts.provider = args.shift(); break;
+      case "--agent-source": opts.agentSources.push(args.shift()); break;
       case "--history": opts.historyFile = args.shift(); break;
       case "--no-history": opts.history = false; break;
+      case "--privacy": opts.privacy = args.shift(); break;
       case "--gist": opts.gist = args.shift(); break;
       case "--public": opts.public = true; break;
       case "-h": case "--help": console.log(HELP); process.exit(0);
@@ -79,7 +96,29 @@ function parseArgs(argv) {
   }
   // A 30-day grass grid is only ~5 columns; default to 17 weeks like GitHub.
   if (opts.chart === "grass" && !opts.daysSet) opts.days = 119;
+  if (!PROVIDERS.includes(opts.provider)) throw new Error(`Unknown provider "${opts.provider}". Available: ${PROVIDERS.join(", ")}`);
+  if (!["public", "private"].includes(opts.privacy)) throw new Error('Privacy must be "public" or "private".');
   return opts;
+}
+
+function publicStats(stats, privacy) {
+  if (privacy !== "private") return stats;
+  return { ...stats, byProject: [] };
+}
+
+function parseAgentSource(value) {
+  const at = value?.indexOf(":");
+  if (!value || at < 1 || at === value.length - 1) throw new Error("--agent-source must use name:directory, e.g. codex:C:\\logs");
+  return { agent: value.slice(0, at), source: value.slice(at + 1) };
+}
+
+function printInit(opts) {
+  const gist = opts.gist || "YOUR_GIST_ID";
+  console.log("Add this command to the SessionEnd hook in ~/.claude/settings.json:");
+  console.log(JSON.stringify({ hooks: { SessionEnd: [{ hooks: [{ type: "command", command: `npx @sukojin/token-stack sync --card all --gist ${gist}` }] }] } }, null, 2));
+  console.log("\nThen paste this into your README:");
+  console.log(`![token-stack](https://gist.githubusercontent.com/<you>/${gist}/raw/token-stack-summary.svg)`);
+  console.log("\nThis command only prints instructions; it never changes your Claude settings.");
 }
 
 function renderCards(stats, opts) {
@@ -98,8 +137,16 @@ function renderCards(stats, opts) {
   });
 }
 
-const opts = parseArgs(process.argv.slice(2));
-const entries = collectEntries(opts.source);
+let opts;
+try { opts = parseArgs(process.argv.slice(2)); } catch (err) { console.error(err.message); process.exit(1); }
+if (opts.command === "init") { printInit(opts); process.exit(0); }
+let entries = collectEntries(opts.source, { agent: "claude-code" });
+try {
+  for (const value of opts.agentSources) {
+    const { agent, source } = parseAgentSource(value);
+    entries = entries.concat(collectEntries(source, { agent }));
+  }
+} catch (err) { console.error(err.message); process.exit(1); }
 const history = opts.history ? loadHistory(opts.historyFile) : { version: 1, days: {} };
 mergeHistory(history, toDayRecords(entries));
 if (Object.keys(history.days).length === 0) {
@@ -108,7 +155,7 @@ if (Object.keys(history.days).length === 0) {
   process.exit(1);
 }
 if (opts.history) saveHistory(history, opts.historyFile);
-const stats = aggregate(history, { days: opts.days });
+const stats = publicStats(aggregate(history, { days: opts.days }), opts.privacy);
 
 switch (opts.command) {
   case "generate": {
@@ -150,6 +197,11 @@ switch (opts.command) {
     console.log(`\nBy model:`);
     for (const m of stats.byModel) {
       console.log(`  ${m.name.padEnd(28)} ${formatTokens(m.total).padStart(8)}  ${formatCost(m.cost)}`);
+    }
+    console.log(`\nBy agent:`);
+    for (const a of stats.byAgent) {
+      const share = t.total ? ((a.total / t.total) * 100).toFixed(1) : "0.0";
+      console.log(`  ${a.name.padEnd(28)} ${formatTokens(a.total).padStart(8)}  ${share}%`);
     }
     console.log(`\nTop projects:`);
     for (const p of stats.byProject.slice(0, 8)) {

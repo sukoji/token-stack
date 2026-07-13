@@ -41,8 +41,8 @@ ${extra}
 
 const delay = (i, step, speed) => `animation-delay:${((i * step) / speed).toFixed(2)}s`;
 
-function frame(w, h, t, title, body, style) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(title)}">
+function frame(w, h, t, title, body, style, scale = 1) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(w * scale)}" height="${Math.round(h * scale)}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(title)}">
 <title>${esc(title)}</title>
 ${style}
 <rect x="0.5" y="0.5" width="${w - 1}" height="${h - 1}" rx="8" fill="${t.bg}" stroke="${t.border}"/>
@@ -149,7 +149,7 @@ export function renderSummaryCompact(stats, opts = {}) {
 ${chartSvg}
 <text class="f" style="${delay(8, 0.12, speed)}" x="20" y="${H - 10}" font-size="9.5" fill="${t.subtext}">in ${formatTokens(totals.input)} · out ${formatTokens(totals.output)} · cache ${formatTokens(totals.cacheRead + totals.cacheWrite)}</text>
 </g>`;
-  return frame(W, H, t, title, body, styles({ anim, speed }, extraCss));
+  return frame(W, H, t, title, body, styles({ anim, speed }, extraCss), opts.scale);
 }
 
 export function renderSummary(stats, opts = {}) {
@@ -210,7 +210,7 @@ ${spark}
 <line x1="${chartX}" y1="${baseY + 1}" x2="${chartX + chartW}" y2="${baseY + 1}" stroke="${t.border}"/>
 <text class="f" style="${delay(8, 0.12, speed)}" x="25" y="${H - 18}" font-size="11" fill="${t.subtext}">${footer}</text>
 </g>`;
-  return frame(W, H, t, title, body, styles({ anim, speed }));
+  return frame(W, H, t, title, body, styles({ anim, speed }), opts.scale);
 }
 
 export function renderActivity(stats, opts = {}) {
@@ -243,7 +243,7 @@ ${bars}
 <text x="${chartX}" y="${baseY + 18}" font-size="10" fill="${t.subtext}">${days[0]?.date ?? ""}</text>
 <text x="${chartX + chartW}" y="${baseY + 18}" font-size="10" text-anchor="end" fill="${t.subtext}">${days[days.length - 1]?.date ?? ""}</text>
 </g>`;
-  return frame(W, H, t, title, body, styles({ anim, speed }));
+  return frame(W, H, t, title, body, styles({ anim, speed }), opts.scale);
 }
 
 export function renderModels(stats, opts = {}) {
@@ -293,11 +293,28 @@ ${arcs}
 <text class="f" style="${delay(3, 0.12, speed)}" x="${cx}" y="${cy + 18}" font-size="10" text-anchor="middle" fill="${t.subtext}">tokens</text>
 ${legend}
 </g>`;
-  return frame(W, H, t, title, body, styles({ anim, speed }, donutKeyframes));
+  return frame(W, H, t, title, body, styles({ anim, speed }, donutKeyframes), opts.scale);
+}
+
+export function renderAgents(stats, opts = {}) {
+  const { speed = 1, anim = true, title = "AI Coding Agents" } = opts;
+  const t = resolveTheme(opts.theme);
+  const W = 495, H = 220;
+  const agents = stats.byAgent ?? [];
+  const total = Math.max(stats.totals.total, 1);
+  const rows = agents.slice(0, 6).map((agent, i) => {
+    const y = 62 + i * 25;
+    const width = Math.max(2, Math.round((agent.total / total) * 250));
+    const pct = ((agent.total / total) * 100).toFixed(1);
+    return `<g class="f" style="${delay(i + 1, 0.12, speed)}"><text x="25" y="${y}" font-size="12" fill="${t.text}">${esc(agent.name)}</text><rect x="165" y="${y - 10}" width="250" height="9" rx="4.5" fill="${t.track}"/><rect class="bx" style="${delay(i + 1, 0.12, speed)}" x="165" y="${y - 10}" width="${width}" height="9" rx="4.5" fill="${t.bars[i % t.bars.length]}"/><text x="470" y="${y}" font-size="11" text-anchor="end" fill="${t.subtext}">${pct}% · ${formatTokens(agent.total)}</text></g>`;
+  }).join("\n");
+  const body = `<g font-family="'Segoe UI',Ubuntu,Sans-Serif"><text class="f" x="25" y="33" font-size="16" font-weight="600" fill="${t.title}">◈ ${esc(title)}</text><text class="f" style="${delay(1, 0.12, speed)}" x="470" y="33" font-size="11" text-anchor="end" fill="${t.subtext}">local data · all time</text>${rows || `<text x="25" y="76" font-size="12" fill="${t.subtext}">No agent usage found yet.</text>`}</g>`;
+  return frame(W, H, t, title, body, styles({ anim, speed }), opts.scale);
 }
 
 export const CARDS = {
   summary: renderSummary,
   activity: renderActivity,
   models: renderModels,
+  agents: renderAgents,
 };

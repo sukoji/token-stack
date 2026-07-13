@@ -1,130 +1,133 @@
-# ⚡ token-stack
+# token-stack
 
-**Animated token-usage cards for your GitHub README — no server required.**
+**Private, shareable AI coding activity cards for your GitHub README — no server required.**
 
 [![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](./LICENSE)
 [![node](https://img.shields.io/badge/node-%E2%89%A518-3fb950?style=flat-square)](https://nodejs.org)
 [![zero dependencies](https://img.shields.io/badge/dependencies-0-8b949e?style=flat-square)](./package.json)
-[![live demo](https://img.shields.io/badge/live%20demo-sukoji-58a6ff?style=flat-square)](https://github.com/sukoji)
 
-`token-stack` reads the session transcripts Claude Code already keeps on your
-machine (`~/.claude/projects/**/*.jsonl`), aggregates your token usage, and
-renders it as animated SVG cards you can embed anywhere — your profile README,
-a project README, a blog. Everything runs locally; nothing is uploaded except
-the SVG you choose to publish.
+`token-stack` reads the local JSONL transcripts created by Claude Code, aggregates token usage, and renders animated SVG cards for a GitHub profile, project README, or blog. Your transcripts stay on your machine; only the SVG you choose to publish leaves it.
 
 <p align="center">
-  <img src="./assets/token-stack-summary.svg" alt="summary card"/>
+  <img src="./assets/token-stack-summary.svg" alt="Token Stack summary card"/>
 </p>
 <p align="center">
-  <img src="./assets/token-stack-activity.svg" alt="activity card"/>
-  <img src="./assets/token-stack-models.svg" alt="models card"/>
-  <img src="./assets/token-stack-summary-compact.svg" alt="compact summary card"/>
+  <img src="./assets/token-stack-activity.svg" alt="Token Stack activity card"/>
+  <img src="./assets/token-stack-models.svg" alt="Token Stack model card"/>
+  <img src="./assets/token-stack-summary-compact.svg" alt="Compact Token Stack card"/>
 </p>
 
 ## Quick start
 
 ```bash
-# render cards into the current directory
-npx github:sukoji/token-stack generate --card all
+# Create cards in the current directory
+npx @sukojin/token-stack generate --card all
 
-# or publish straight to a GitHub gist and get embed links
-npx github:sukoji/token-stack sync --card all
+# Or create/update a Gist and print README embeds
+npx @sukojin/token-stack sync --card all
 ```
 
-`sync` prints ready-to-paste markdown like:
+Re-run `sync --gist <id>` to refresh the same public image URL everywhere it is embedded.
 
-```md
-![token-stack](https://gist.githubusercontent.com/<you>/<gist-id>/raw/token-stack-summary.svg)
+## Cards
+
+| Card | What it shows |
+|---|---|
+| `summary` | All-time tokens, estimated API cost, streak, and input/output/cache mix |
+| `activity` | Daily token activity for a selected window |
+| `models` | Token share by model |
+| `agents` | Token share by coding agent, such as Claude Code and Codex |
+
+Use `--card all` to render every card. SVGs respect `prefers-reduced-motion`; pass `--no-anim` for fully static output.
+
+## README layout guide
+
+Cards have intentional native ratios, so a README can stay balanced instead of becoming a wall of charts.
+
+| Placement | Command | Native size | Best use |
+|---|---|---:|---|
+| Two-column profile grid | `generate --card summary --compact --chart grass` | 340×200 | Pair with `github-profile-summary-cards` or another compact card |
+| Profile hero | `generate --card summary` | 495×250 | One clear all-time headline |
+| Full-row activity | `generate --card activity --days 30` | 495×220 | Weekly/monthly momentum |
+| Full-row agent mix | `generate --card agents` | 495×220 | Claude Code / Codex / Gemini workflow split |
+| Model mix companion | `generate --card models` | 495×220 | Place beside activity or agents in a two-column layout |
+
+For compact summary trends, choose `--chart bars` for immediate comparison, `--chart line` for a smoother
+trend, or `--chart grass` for a GitHub-style long-term contribution view. Use `--days` to match the story:
+`7` for a weekly update, `30` for a monthly profile, and the grass default (17 weeks) for consistency.
+
+All cards are SVGs. `--scale 0.75`, `--scale 1`, and `--scale 1.25` change intrinsic output dimensions
+without distorting the ratio, which is useful when a README renderer does not apply a width attribute.
+
+## Agent distribution
+
+The `agents` card makes a profile reflect how you actually work, not just which model you used. The built-in Claude source is labelled `claude-code`. Add another JSONL-compatible source with an explicit label:
+
+```bash
+npx @sukojin/token-stack generate --card agents \
+  --agent-source codex:/path/to/codex-usage-jsonl \
+  --agent-source gemini:/path/to/gemini-usage-jsonl
 ```
 
-Paste that into any README. Re-running `sync --gist <id>` refreshes the same
-URL, so the embed updates everywhere at once.
-
-## Why no server?
-
-Cards like `github-readme-stats` need a serverless function because the data
-lives behind an API. Your token usage lives **on your machine**, so the
-pipeline is simply:
-
-```
-local JSONL transcripts ──► token-stack (CLI) ──► animated SVG ──► gist / repo
-```
-
-GitHub proxies README images through camo, and SVGs with inline CSS/SMIL
-animations play just fine — no JavaScript, no backend, $0 forever.
+The explicit path is deliberate: providers can change private local storage formats, and token-stack never guesses at or uploads folders. Extra sources currently need Claude-compatible `message.usage` JSONL records; native provider adapters should be added only with public fixtures and tests.
 
 ## Commands
 
-| command | what it does |
+| Command | What it does |
 |---|---|
-| `generate` | write SVG card(s) to disk (default) |
-| `sync` | upload card(s) to a gist via `gh` and print embed links |
-| `stats` | terminal summary |
-| `json` | aggregated stats as JSON (build your own frontend) |
+| `generate` | Write SVG card(s) to disk (default) |
+| `sync` | Upload card(s) to a Gist via `gh` and print embed links |
+| `stats` | Print a usage summary to the terminal |
+| `json` | Print aggregated statistics for another frontend |
+| `init` | Print a reviewable Claude Code hook and README embed; changes no settings |
 
 ## Options
 
-| flag | default | notes |
+| Flag | Default | Notes |
 |---|---|---|
-| `--card` | `summary` | `summary` \| `activity` \| `models` \| `all` |
-| `--compact` | | 340×200 summary — same size as [github-profile-summary-cards](https://github.com/vn7n24fzkq/github-profile-summary-cards), sits next to them without height mismatch |
-| `--chart` | `bars` | compact trend style: `bars` \| `line` \| `grass` (GitHub-style heatmap; defaults to a 17-week window) |
-| `--theme` | `dark` | `dark` \| `light` \| `dracula` \| `tokyonight` |
-| `--days` | `30` | window for the activity chart |
-| `--speed` | `1` | animation speed multiplier (`2` = twice as fast) |
-| `--no-anim` | | render static cards |
-| `--title` | | custom card title |
-| `-o, --out` | `.` | output file or directory |
-| `--source` | `~/.claude/projects` | Claude Code data dir |
-| `--history` | `~/.token-stack/history.json` | snapshot file (see below) |
-| `--no-history` | | current transcripts only |
-| `--gist` | | existing gist id to update in place |
-| `--public` | | make the created gist public (default: secret) |
+| `--card` | `summary` | `summary`, `activity`, `models`, `agents`, or `all` |
+| `--compact` | | 340×200 summary card |
+| `--chart` | `bars` | Compact trend: `bars`, `line`, or `grass` |
+| `--theme` | `dark` | `dark`, `light`, `dracula`, or `tokyonight` |
+| `--days` | `30` | Activity-chart window |
+| `--scale` | `1` | Intrinsic SVG scale from `0.25` to `3`, preserving ratio |
+| `--no-anim` | | Render static cards |
+| `--source` | `~/.claude/projects` | Primary Claude Code data directory |
+| `--agent-source` | | Extra `name:directory` JSONL source; repeatable |
+| `--privacy` | `public` | `private` removes project names from JSON output |
+| `--gist` | | Existing Gist ID to update in place |
+| `--public` | | Make a newly-created Gist public; default is secret |
 
-Animations respect `prefers-reduced-motion`.
+## Keep cards fresh
 
-## True all-time stats (snapshots)
+Run this once to get a safe, copyable setup snippet:
 
-Claude Code deletes transcripts after ~30 days, so a plain scan can only see a
-rolling window. Every run therefore merges the current scan into a local
-snapshot (`~/.token-stack/history.json`, per-day × per-model aggregates —
-a few KB, no message content). Days that vanish from disk keep their stored
-numbers, so "all time" keeps growing as long as you run `generate`/`sync`
-once in a while. Delete the file to reset.
-
-## Keeping cards fresh
-
-Add a [Claude Code hook](https://docs.anthropic.com/en/docs/claude-code/hooks)
-so every session refreshes your gist automatically — `.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "SessionEnd": [
-      {
-        "hooks": [
-          { "type": "command", "command": "npx github:sukoji/token-stack sync --card all --gist YOUR_GIST_ID" }
-        ]
-      }
-    ]
-  }
-}
+```bash
+npx @sukojin/token-stack init --gist YOUR_GIST_ID
 ```
 
-Or run it on a schedule with Task Scheduler / cron.
+It prints a Claude Code `SessionEnd` hook that runs `token-stack sync`. Review and add it to your `~/.claude/settings.json`, or schedule the same command with Task Scheduler / cron.
 
-## Cost estimates
+## History and costs
 
-Costs are estimated from public per-MTok API pricing (cache writes at 1.25×
-input, cache reads at 0.1×). If you're on a subscription plan the dollar figure
-is what your usage *would* cost via the API, not what you paid.
+Claude Code may delete old transcripts. token-stack stores a small per-day snapshot at `~/.token-stack/history.json` so all-time values continue growing. It contains aggregate token counts, not messages. Writes are atomic.
+
+Costs are API-price estimates, not subscription charges. If you use Pro or Max, treat them as a comparable usage metric rather than an invoice.
+
+## Development and releases
+
+```bash
+npm test
+npm pack --dry-run
+```
+
+Push a `v*` tag to publish a release. The workflow runs tests and publishes with the repository `NPM_TOKEN` secret; it safely skips publishing when the secret is absent.
 
 ## Requirements
 
-- Node.js ≥ 18
-- [GitHub CLI](https://cli.github.com) (`gh auth login`) — only for `sync`
-- Claude Code with local sessions (Codex/Gemini adapters welcome — PRs open!)
+- Node.js 18+
+- [GitHub CLI](https://cli.github.com) with `gh auth login` for `sync`
+- Claude Code local sessions for the built-in source
 
 ## License
 

@@ -33,7 +33,7 @@ function projectNameFromSlug(slug) {
 }
 
 // Reads every session transcript and returns one record per API response.
-export function collectEntries(sourceDir = defaultSourceDir()) {
+export function collectEntries(sourceDir = defaultSourceDir(), { agent = "claude-code" } = {}) {
   const seen = new Set();
   const entries = [];
   for (const file of walkJsonl(sourceDir)) {
@@ -78,6 +78,7 @@ export function collectEntries(sourceDir = defaultSourceDir()) {
         cacheWrite,
         project: projectNameFromSlug(slug),
         sessionId: obj.sessionId,
+        agent,
       });
     }
   }
@@ -111,9 +112,10 @@ const dayTotal = (rec) =>
 export function toDayRecords(entries) {
   const days = {};
   for (const e of entries) {
-    const day = (days[dayKey(e.ts)] ??= { models: {}, projects: {}, sessions: [] });
+    const day = (days[dayKey(e.ts)] ??= { models: {}, projects: {}, agents: {}, sessions: [] });
     add((day.models[e.model || "unknown"] ??= emptyBucket()), e);
     add((day.projects[e.project] ??= emptyBucket()), e);
+    add((day.agents[e.agent || "unknown"] ??= emptyBucket()), e);
     if (e.sessionId && !day.sessions.includes(e.sessionId)) day.sessions.push(e.sessionId);
   }
   return days;
@@ -140,13 +142,16 @@ export function mergeHistory(history, currentDays) {
 
 export function saveHistory(history, file = defaultHistoryFile()) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(history));
+  const temp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(temp, JSON.stringify(history));
+  fs.renameSync(temp, file);
 }
 
 export function aggregate(history, { days = 30 } = {}) {
   const totals = { ...emptyBucket(), cost: 0 };
   const byModel = new Map();
   const byProject = new Map();
+  const byAgent = new Map();
   const sessions = new Set();
   const dayKeys = Object.keys(history.days).sort();
 
@@ -160,6 +165,12 @@ export function aggregate(history, { days = 30 } = {}) {
     const rec = history.days[day];
     for (const [model, b] of Object.entries(rec.models)) merge(byModel, model, b);
     for (const [proj, b] of Object.entries(rec.projects)) merge(byProject, proj, b);
+    // Snapshots written before agent tracking are Claude Code data by definition.
+    const legacyAgent = Object.values(rec.models).reduce((sum, bucket) => {
+      add(sum, bucket);
+      return sum;
+    }, emptyBucket());
+    for (const [agent, b] of Object.entries(rec.agents ?? { "claude-code": legacyAgent })) merge(byAgent, agent, b);
     for (const s of rec.sessions) sessions.add(s);
   }
   for (const [model, b] of byModel) {
@@ -205,6 +216,7 @@ export function aggregate(history, { days = 30 } = {}) {
     byProject: [...byProject.entries()]
       .map(([name, v]) => ({ name, ...v }))
       .sort((a, b) => b.total - a.total),
+    byAgent: sortDesc(byAgent),
     byDay,
     activeDays: dayKeys.length,
     streak,

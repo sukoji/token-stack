@@ -1,25 +1,40 @@
 {
-  "name": "token-stack",
-  "version": "0.1.0",
-  "description": "Animated token-usage cards for your GitHub README, generated from your local Claude Code sessions. No server required.",
+  "name": "@sukojin/token-stack",
+  "version": "0.2.0",
+  "description": "Private, shareable AI coding activity cards for your GitHub README.",
   "type": "module",
   "bin": {
     "token-stack": "bin/token-stack.js"
   },
   "files": [
     "bin",
-    "src"
+    "src",
+    "README.md",
+    "LICENSE"
   ],
+  "scripts": {
+    "test": "node --test",
+    "prepublishOnly": "npm test"
+  },
   "engines": {
     "node": ">=18"
   },
   "keywords": [
     "claude-code",
+    "codex",
+    "ai-coding",
     "token-usage",
     "github-readme",
     "svg",
     "dashboard"
   ],
-  "repository": "github:sukoji/token-stack",
+  "homepage": "https://github.com/sukoji/token-stack",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sukoji/token-stack.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sukoji/token-stack/issues"
+  },
   "license": "MIT"
 }

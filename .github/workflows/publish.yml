@@ -1,0 +1,31 @@
+name: publish
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - run: npm test
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::warning::NPM_TOKEN is not set; skipping npm publish."
+            exit 0
+          fi
+          VERSION=$(node -p "require('./package.json').version")
+          PUBLISHED=$(npm view @sukojin/token-stack version 2>/dev/null || true)
+          if [ "$VERSION" = "$PUBLISHED" ]; then exit 0; fi
+          npm publish --provenance --access public
