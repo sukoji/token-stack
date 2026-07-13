@@ -15,6 +15,7 @@
 <p align="center">
   <img src="./assets/token-stack-activity.svg" alt="Token Stack activity card"/>
   <img src="./assets/token-stack-models.svg" alt="Token Stack model card"/>
+  <img src="./assets/token-stack-agents.svg" alt="Token Stack agent distribution card"/>
   <img src="./assets/token-stack-summary-compact.svg" alt="Compact Token Stack card"/>
 </p>
 
