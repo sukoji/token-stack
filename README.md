@@ -10,13 +10,15 @@
 `token-stack` reads the local JSONL transcripts created by Claude Code, aggregates token usage, and renders animated SVG cards for a GitHub profile, project README, or blog. Your transcripts stay on your machine; only the SVG you choose to publish leaves it.
 
 <p align="center">
-  <img src="./assets/token-stack-summary.svg" alt="Token Stack summary card"/>
+  <img src="./assets/token-stack-summary.svg" width="495" alt="Token Stack wide summary card"/>
 </p>
 <p align="center">
-  <img src="./assets/token-stack-activity.svg" alt="Token Stack activity card"/>
-  <img src="./assets/token-stack-models.svg" alt="Token Stack model card"/>
-  <img src="./assets/token-stack-agents.svg" alt="Token Stack agent distribution card"/>
-  <img src="./assets/token-stack-summary-compact.svg" alt="Compact Token Stack card"/>
+  <img src="./assets/token-stack-activity.svg" width="48%" alt="Token Stack activity card in two-column layout"/>
+  <img src="./assets/token-stack-models.svg" width="48%" alt="Token Stack model card in two-column layout"/>
+</p>
+<p align="center">
+  <img src="./assets/token-stack-agents.svg" width="495" alt="Token Stack agent distribution card"/>
+  <img src="./assets/token-stack-summary-compact.svg" width="340" alt="Compact Token Stack card"/>
 </p>
 
 ## Quick start
@@ -37,7 +39,7 @@ Prefer a global install? `npm install --global @sukojin/token-stack`, then use `
 
 | Card | What it shows |
 |---|---|
-| `summary` | All-time tokens, estimated API cost, streak, and input/output/cache mix |
+| `summary` | All-time tokens, estimated API cost, streak, and an order-of-magnitude input/output/cache comparison |
 | `activity` | Daily token activity for a selected window |
 | `models` | Token share by model |
 | `agents` | Token share by coding agent, such as Claude Code and Codex |
@@ -56,12 +58,20 @@ Cards have intentional native ratios, so a README can stay balanced instead of b
 | Full-row agent mix | `generate --card agents` | 495×150–220 | Claude Code / Codex / Gemini workflow split |
 | Model mix companion | `generate --card models` | 495×220 | Place beside activity or agents in a two-column layout |
 
+The gallery above intentionally shows three placements: a 495px hero, a responsive two-column pair, and a
+340px compact card. Copy the HTML `width` values when you want a fixed presentation, or use `--scale` when
+the raw SVG's intrinsic size needs adjusting.
+
 For compact summary trends, choose `--chart bars` for immediate comparison, `--chart line` for a smoother
 trend, or `--chart grass` for a GitHub-style long-term contribution view. Use `--days` to match the story:
 `7` for a weekly update, `30` for a monthly profile, and the grass default (17 weeks) for consistency.
 
 All cards are SVGs. `--scale 0.75`, `--scale 1`, and `--scale 1.25` change intrinsic output dimensions
 without distorting the ratio, which is useful when a README renderer does not apply a width attribute.
+
+Summary category bars use a logarithmic comparison by default. Cache reads are often orders of magnitude
+larger than input/output; log scale keeps every category visible while the labels retain exact values. Pass
+`--breakdown raw` when you specifically want proportional raw-token bars.
 
 ## Agent distribution
 
@@ -92,6 +102,7 @@ The explicit path is deliberate: providers can change private local storage form
 | `--card` | `summary` | `summary`, `activity`, `models`, `agents`, or `all` |
 | `--compact` | | 340×200 summary card |
 | `--chart` | `bars` | Compact trend: `bars`, `line`, or `grass` |
+| `--breakdown` | `log` | Summary comparison: `log` (readable) or `raw` (proportional tokens) |
 | `--theme` | `dark` | `dark`, `light`, `dracula`, or `tokyonight` |
 | `--days` | `30` | Activity-chart window |
 | `--scale` | `1` | Intrinsic SVG scale from `0.25` to `3`, preserving ratio |

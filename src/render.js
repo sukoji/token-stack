@@ -154,7 +154,7 @@ ${chartSvg}
 
 export function renderSummary(stats, opts = {}) {
   if (opts.compact) return renderSummaryCompact(stats, opts);
-  const { speed = 1, anim = true, title = "Token Stack · Claude Code" } = opts;
+  const { speed = 1, anim = true, title = "Token Stack · Claude Code", breakdown = "log" } = opts;
   const t = resolveTheme(opts.theme);
   const W = 495, H = 250;
   const { totals } = stats;
@@ -165,11 +165,14 @@ export function renderSummary(stats, opts = {}) {
     ["Cache read", totals.cacheRead],
     ["Cache write", totals.cacheWrite],
   ];
-  const maxRow = Math.max(...rows.map((r) => r[1]), 1);
+  // Cache reads can be thousands of times larger than request I/O. Log bars
+  // retain that ordering while keeping smaller categories useful to compare.
+  const compare = (value) => breakdown === "raw" ? value : Math.log10(value + 1);
+  const maxRow = Math.max(...rows.map((r) => compare(r[1])), 1);
   const rowsSvg = rows
     .map(([label, val], i) => {
       const y = 128 + i * 25;
-      const w = Math.max(2, Math.round((val / maxRow) * 108));
+      const w = Math.max(2, Math.round((compare(val) / maxRow) * 108));
       return `<g class="f" style="${delay(i + 3, 0.12, speed)}">
 <text x="25" y="${y + 5}" font-size="11" fill="${t.text}">${label}</text>
 <rect x="92" y="${y - 3}" width="108" height="6" rx="3" fill="${t.track}"/>
@@ -204,6 +207,7 @@ export function renderSummary(stats, opts = {}) {
 <text class="f" x="25" y="33" font-size="16" font-weight="600" fill="${t.title}">⚡ ${esc(title)}</text>
 <text class="f" style="${delay(1, 0.12, speed)}" x="25" y="76" font-size="34" font-weight="800" fill="url(#big)">${formatTokens(totals.total)}</text>
 <text class="f" style="${delay(2, 0.12, speed)}" x="25" y="97" font-size="12" fill="${t.subtext}">tokens all time · est. ${formatCost(totals.cost)}</text>
+<text class="f" style="${delay(2, 0.12, speed)}" x="255" y="97" font-size="10" text-anchor="end" fill="${t.subtext}">${breakdown === "log" ? "relative log scale" : "raw token scale"}</text>
 ${rowsSvg}
 <text class="f" style="${delay(3, 0.12, speed)}" x="${chartX}" y="112" font-size="11" fill="${t.subtext}">last 14 days · ${formatTokens(sparkTotal)}</text>
 ${spark}

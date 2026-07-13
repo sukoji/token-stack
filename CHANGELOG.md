@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.4
+
+- Use readable logarithmic summary bars by default, with a raw scale option.
+- Show wide, responsive two-column, and compact layouts in the README gallery.
+
 ## 0.2.3
 
 - Make the agent card compact for a single source and prevent bar/value overlap.

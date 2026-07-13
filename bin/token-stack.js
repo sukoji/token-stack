@@ -26,6 +26,7 @@ Options:
   --card <name>     summary | activity | models | agents | all   (default: summary)
   --compact         340x200 summary card (matches github-profile-summary-cards)
   --chart <name>    compact trend style: bars | line | grass   (default: bars)
+  --breakdown <mode> summary bars: log | raw                  (default: log)
   --theme <name>    ${Object.keys(THEMES).join(" | ")}   (default: dark)
   --days <n>        window for the activity chart        (default: 30)
   --speed <x>       animation speed multiplier           (default: 1)
@@ -62,6 +63,7 @@ function parseArgs(argv) {
     history: true,
     provider: "auto",
     privacy: "public",
+    breakdown: "log",
     agentSources: [],
   };
   const args = [...argv];
@@ -77,6 +79,7 @@ function parseArgs(argv) {
       case "--no-anim": opts.anim = false; break;
       case "--compact": opts.compact = true; break;
       case "--chart": opts.chart = args.shift(); break;
+      case "--breakdown": opts.breakdown = args.shift(); break;
       case "--title": opts.title = args.shift(); break;
       case "-o": case "--out": opts.out = args.shift(); break;
       case "--source": opts.source = args.shift(); break;
@@ -98,6 +101,7 @@ function parseArgs(argv) {
   if (opts.chart === "grass" && !opts.daysSet) opts.days = 119;
   if (!PROVIDERS.includes(opts.provider)) throw new Error(`Unknown provider "${opts.provider}". Available: ${PROVIDERS.join(", ")}`);
   if (!["public", "private"].includes(opts.privacy)) throw new Error('Privacy must be "public" or "private".');
+  if (!["log", "raw"].includes(opts.breakdown)) throw new Error('Breakdown must be "log" or "raw".');
   return opts;
 }
 
