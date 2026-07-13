@@ -10,9 +10,10 @@ test("compact card renders a static accessible SVG", () => {
 });
 
 test("agent card shows a percentage distribution", () => {
-  const svg = renderAgents({ totals: { total: 100 }, byAgent: [{ name: "claude-code", total: 60 }, { name: "codex", total: 40 }] }, { anim: false });
+  const svg = renderAgents({ totals: { total: 0 }, agentSessions: 10, byAgentActivity: [{ name: "claude-code", sessions: 6 }, { name: "codex", sessions: 4 }] }, { anim: false });
   assert.match(svg, /claude-code/);
   assert.match(svg, /60\.0%/);
+  assert.match(svg, /6 sessions/);
   assert.match(svg, /width="495" height="150"/);
   assert.match(svg, /x="175"/);
 });

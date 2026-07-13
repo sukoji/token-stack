@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- Auto-detect Codex and Antigravity local sessions.
+- Base agent distribution on unique sessions, not incomparable provider token totals.
+- Add provider-schema and activity aggregation regression tests.
+
 ## 0.2.4
 
 - Use readable logarithmic summary bars by default, with a raw scale option.

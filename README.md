@@ -42,7 +42,7 @@ Prefer a global install? `npm install --global @sukojin/token-stack`, then use `
 | `summary` | All-time tokens, estimated API cost, streak, and an order-of-magnitude input/output/cache comparison |
 | `activity` | Daily token activity for a selected window |
 | `models` | Token share by model |
-| `agents` | Token share by coding agent, such as Claude Code and Codex |
+| `agents` | Session-based activity share across Claude Code, Codex, and Antigravity |
 
 Use `--card all` to render every card. SVGs respect `prefers-reduced-motion`; pass `--no-anim` for fully static output.
 
@@ -55,7 +55,7 @@ Cards have intentional native ratios, so a README can stay balanced instead of b
 | Two-column profile grid | `generate --card summary --compact --chart grass` | 340×200 | Pair with `github-profile-summary-cards` or another compact card |
 | Profile hero | `generate --card summary` | 495×250 | One clear all-time headline |
 | Full-row activity | `generate --card activity --days 30` | 495×220 | Weekly/monthly momentum |
-| Full-row agent mix | `generate --card agents` | 495×150–220 | Claude Code / Codex / Gemini workflow split |
+| Full-row agent mix | `generate --card agents` | 495×150–220 | Claude Code / Codex / Antigravity workflow split |
 | Model mix companion | `generate --card models` | 495×220 | Place beside activity or agents in a two-column layout |
 
 The gallery above intentionally shows three placements: a 495px hero, a responsive two-column pair, and a
@@ -75,15 +75,28 @@ larger than input/output; log scale keeps every category visible while the label
 
 ## Agent distribution
 
-The `agents` card makes a profile reflect how you actually work, not just which model you used. The built-in Claude source is labelled `claude-code`. Add another JSONL-compatible source with an explicit label:
+The `agents` card is deliberately **session-based**, not token-based. Claude exposes billed token fields while Codex and Antigravity logs do not expose comparable totals. Counting unique local sessions gives every supported agent a fair, explainable activity share without inventing token data.
+
+`--provider auto` (the default) safely detects these local sources:
+
+| Agent | Default source | Basis |
+|---|---|---|
+| Claude Code | `~/.claude/projects` | Unique Claude sessions |
+| Codex | `~/.codex/sessions` | Unique Codex rollout files |
+| Antigravity | `~/.gemini/antigravity/brain` | Unique Antigravity brain transcripts |
+
+Use a provider-only view or override a location when needed:
 
 ```bash
-npx @sukojin/token-stack generate --card agents \
-  --agent-source codex:/path/to/codex-usage-jsonl \
-  --agent-source gemini:/path/to/gemini-usage-jsonl
+npx @sukojin/token-stack generate --card agents --provider codex
+npx @sukojin/token-stack generate --card agents --antigravity-source /path/to/brain
 ```
 
-The explicit path is deliberate: providers can change private local storage formats, and token-stack never guesses at or uploads folders. Extra sources currently need Claude-compatible `message.usage` JSONL records; native provider adapters should be added only with public fixtures and tests.
+`--agent-source name:directory` remains available for additional Claude-compatible JSONL sources. Provider logs are never uploaded.
+
+## Provider verification
+
+Every supported provider adapter has fixture-backed tests for its session metadata and timestamp shape, plus tests for malformed input, duplicate session handling, and legacy history migration. The parser only records fields needed for local aggregation; it never stores transcript text. When a provider changes a private format, the adapter should fail closed (omit unrecognized sessions) until a new fixture and regression test are added.
 
 ## Commands
 
@@ -108,6 +121,9 @@ The explicit path is deliberate: providers can change private local storage form
 | `--scale` | `1` | Intrinsic SVG scale from `0.25` to `3`, preserving ratio |
 | `--no-anim` | | Render static cards |
 | `--source` | `~/.claude/projects` | Primary Claude Code data directory |
+| `--provider` | `auto` | `auto`, `claude`, `codex`, or `antigravity` |
+| `--codex-source` | `~/.codex/sessions` | Override Codex session directory |
+| `--antigravity-source` | `~/.gemini/antigravity/brain` | Override Antigravity brain directory |
 | `--agent-source` | | Extra `name:directory` JSONL source; repeatable |
 | `--privacy` | `public` | `private` removes project names from JSON output |
 | `--gist` | | Existing Gist ID to update in place |

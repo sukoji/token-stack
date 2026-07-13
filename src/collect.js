@@ -12,6 +12,14 @@ export function defaultHistoryFile() {
   return path.join(os.homedir(), ".token-stack", "history.json");
 }
 
+export function defaultCodexSourceDir() {
+  return path.join(os.homedir(), ".codex", "sessions");
+}
+
+export function defaultAntigravitySourceDir() {
+  return path.join(os.homedir(), ".gemini", "antigravity", "brain");
+}
+
 function* walkJsonl(dir) {
   let entries;
   try {
@@ -85,6 +93,63 @@ export function collectEntries(sourceDir = defaultSourceDir(), { agent = "claude
   return entries;
 }
 
+// Codex session files expose session/activity events, but not the billed
+// input/output/cache usage that Claude transcripts expose. Return one zero-token
+// entry per session so it participates only in session-based agent activity.
+export function collectCodexSessions(sourceDir = defaultCodexSourceDir()) {
+  const entries = [];
+  for (const file of walkJsonl(sourceDir)) {
+    let text;
+    try { text = fs.readFileSync(file, "utf8"); } catch { continue; }
+    let sessionId = path.basename(file, ".jsonl");
+    let latestTs = "";
+    let project = "Codex";
+    for (const line of text.split("\n")) {
+      if (!line) continue;
+      let obj;
+      try { obj = JSON.parse(line); } catch { continue; }
+      if (obj.timestamp && obj.timestamp > latestTs) latestTs = obj.timestamp;
+      if (obj.type === "session_meta") {
+        sessionId = obj.payload?.session_id || obj.payload?.id || sessionId;
+        if (obj.payload?.cwd) project = path.basename(obj.payload.cwd) || project;
+      }
+    }
+    if (!latestTs) continue;
+    entries.push({
+      ts: latestTs, model: "", input: 0, output: 0, cacheRead: 0, cacheWrite: 0,
+      project, sessionId, agent: "codex",
+    });
+  }
+  return entries;
+}
+
+// Antigravity keeps one transcript.jsonl under each brain UUID. Its event
+// schema contains activity timestamps but no provider-comparable token totals.
+export function collectAntigravitySessions(sourceDir = defaultAntigravitySourceDir()) {
+  const entries = [];
+  for (const file of walkJsonl(sourceDir)) {
+    if (path.basename(file) !== "transcript.jsonl") continue;
+    const sessionId = path.relative(sourceDir, file).split(path.sep)[0];
+    if (!sessionId) continue;
+    let text;
+    try { text = fs.readFileSync(file, "utf8"); } catch { continue; }
+    let latestTs = "";
+    for (const line of text.split("\n")) {
+      if (!line) continue;
+      let obj;
+      try { obj = JSON.parse(line); } catch { continue; }
+      const timestamp = obj.created_at || obj.timestamp;
+      if (timestamp && timestamp > latestTs) latestTs = timestamp;
+    }
+    if (!latestTs) continue;
+    entries.push({
+      ts: latestTs, model: "", input: 0, output: 0, cacheRead: 0, cacheWrite: 0,
+      project: "Antigravity", sessionId, agent: "antigravity",
+    });
+  }
+  return entries;
+}
+
 function dayKey(ts) {
   const d = new Date(ts);
   const p = (n) => String(n).padStart(2, "0");
@@ -112,11 +177,17 @@ const dayTotal = (rec) =>
 export function toDayRecords(entries) {
   const days = {};
   for (const e of entries) {
-    const day = (days[dayKey(e.ts)] ??= { models: {}, projects: {}, agents: {}, sessions: [] });
-    add((day.models[e.model || "unknown"] ??= emptyBucket()), e);
-    add((day.projects[e.project] ??= emptyBucket()), e);
+    const day = (days[dayKey(e.ts)] ??= { models: {}, projects: {}, agents: {}, sessions: [], agentSessions: {} });
+    if (e.input + e.output + e.cacheRead + e.cacheWrite > 0) {
+      add((day.models[e.model || "unknown"] ??= emptyBucket()), e);
+      add((day.projects[e.project] ??= emptyBucket()), e);
+    }
     add((day.agents[e.agent || "unknown"] ??= emptyBucket()), e);
     if (e.sessionId && !day.sessions.includes(e.sessionId)) day.sessions.push(e.sessionId);
+    if (e.sessionId) {
+      const sessions = (day.agentSessions[e.agent || "unknown"] ??= []);
+      if (!sessions.includes(e.sessionId)) sessions.push(e.sessionId);
+    }
   }
   return days;
 }
@@ -136,6 +207,14 @@ export function mergeHistory(history, currentDays) {
   for (const [day, rec] of Object.entries(currentDays)) {
     const old = history.days[day];
     if (!old || dayTotal(rec) >= dayTotal(old)) history.days[day] = rec;
+    else {
+      old.agentSessions ??= {};
+      for (const [agent, ids] of Object.entries(rec.agentSessions ?? {})) {
+        old.agentSessions[agent] = [...new Set([...(old.agentSessions[agent] ?? []), ...ids])];
+        old.agents ??= {};
+        if (!old.agents[agent]) old.agents[agent] = rec.agents[agent];
+      }
+    }
   }
   return history;
 }
@@ -152,6 +231,8 @@ export function aggregate(history, { days = 30 } = {}) {
   const byModel = new Map();
   const byProject = new Map();
   const byAgent = new Map();
+  const agentSessionSets = new Map();
+  const agentActiveDays = new Map();
   const sessions = new Set();
   const dayKeys = Object.keys(history.days).sort();
 
@@ -171,6 +252,13 @@ export function aggregate(history, { days = 30 } = {}) {
       return sum;
     }, emptyBucket());
     for (const [agent, b] of Object.entries(rec.agents ?? { "claude-code": legacyAgent })) merge(byAgent, agent, b);
+    const legacySessions = rec.sessions?.length ? { "claude-code": rec.sessions } : {};
+    for (const [agent, ids] of Object.entries(rec.agentSessions ?? legacySessions)) {
+      const set = agentSessionSets.get(agent) ?? new Set();
+      for (const id of ids) set.add(id);
+      agentSessionSets.set(agent, set);
+      if (ids.length) agentActiveDays.set(agent, (agentActiveDays.get(agent) ?? 0) + 1);
+    }
     for (const s of rec.sessions) sessions.add(s);
   }
   for (const [model, b] of byModel) {
@@ -217,6 +305,10 @@ export function aggregate(history, { days = 30 } = {}) {
       .map(([name, v]) => ({ name, ...v }))
       .sort((a, b) => b.total - a.total),
     byAgent: sortDesc(byAgent),
+    byAgentActivity: [...agentSessionSets.entries()]
+      .map(([name, ids]) => ({ name, sessions: ids.size, activeDays: agentActiveDays.get(name) ?? 0 }))
+      .sort((a, b) => b.sessions - a.sessions || a.name.localeCompare(b.name)),
+    agentSessions: [...agentSessionSets.values()].reduce((sum, ids) => sum + ids.size, 0),
     byDay,
     activeDays: dayKeys.length,
     streak,

@@ -2,14 +2,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
-  collectEntries, toDayRecords, loadHistory, mergeHistory, saveHistory,
-  aggregate, defaultSourceDir, defaultHistoryFile,
+  collectEntries, collectCodexSessions, collectAntigravitySessions,
+  toDayRecords, loadHistory, mergeHistory, saveHistory,
+  aggregate, defaultSourceDir, defaultHistoryFile, defaultCodexSourceDir, defaultAntigravitySourceDir,
 } from "../src/collect.js";
 import { CARDS, formatTokens, formatCost } from "../src/render.js";
 import { THEMES } from "../src/themes.js";
 import { syncToGist } from "../src/sync.js";
 
-const PROVIDERS = ["auto", "claude"];
+const PROVIDERS = ["auto", "claude", "codex", "antigravity"];
 
 const HELP = `token-stack — animated token-usage cards from your local Claude Code sessions
 
@@ -36,6 +37,8 @@ Options:
   -o, --out <path>  output file or directory             (default: .)
   --source <dir>    Claude data dir                      (default: ~/.claude/projects)
   --provider <name> ${PROVIDERS.join(" | ")}                       (default: auto)
+  --codex-source <dir> Codex session directory             (default: ~/.codex/sessions)
+  --antigravity-source <dir> Antigravity brain directory   (default: ~/.gemini/antigravity/brain)
   --agent-source <name:dir>  add a JSONL-compatible agent data directory (repeatable)
   --history <file>  snapshot file for all-time stats     (default: ~/.token-stack/history.json)
   --no-history      current transcripts only, no snapshot read/write
@@ -65,6 +68,8 @@ function parseArgs(argv) {
     privacy: "public",
     breakdown: "log",
     agentSources: [],
+    codexSource: defaultCodexSourceDir(),
+    antigravitySource: defaultAntigravitySourceDir(),
   };
   const args = [...argv];
   if (args[0] && !args[0].startsWith("-")) opts.command = args.shift();
@@ -84,6 +89,8 @@ function parseArgs(argv) {
       case "-o": case "--out": opts.out = args.shift(); break;
       case "--source": opts.source = args.shift(); break;
       case "--provider": opts.provider = args.shift(); break;
+      case "--codex-source": opts.codexSource = args.shift(); break;
+      case "--antigravity-source": opts.antigravitySource = args.shift(); break;
       case "--agent-source": opts.agentSources.push(args.shift()); break;
       case "--history": opts.historyFile = args.shift(); break;
       case "--no-history": opts.history = false; break;
@@ -144,7 +151,10 @@ function renderCards(stats, opts) {
 let opts;
 try { opts = parseArgs(process.argv.slice(2)); } catch (err) { console.error(err.message); process.exit(1); }
 if (opts.command === "init") { printInit(opts); process.exit(0); }
-let entries = collectEntries(opts.source, { agent: "claude-code" });
+let entries = [];
+if (opts.provider === "auto" || opts.provider === "claude") entries = entries.concat(collectEntries(opts.source, { agent: "claude-code" }));
+if (opts.provider === "auto" || opts.provider === "codex") entries = entries.concat(collectCodexSessions(opts.codexSource));
+if (opts.provider === "auto" || opts.provider === "antigravity") entries = entries.concat(collectAntigravitySessions(opts.antigravitySource));
 try {
   for (const value of opts.agentSources) {
     const { agent, source } = parseAgentSource(value);
@@ -203,9 +213,9 @@ switch (opts.command) {
       console.log(`  ${m.name.padEnd(28)} ${formatTokens(m.total).padStart(8)}  ${formatCost(m.cost)}`);
     }
     console.log(`\nBy agent:`);
-    for (const a of stats.byAgent) {
-      const share = t.total ? ((a.total / t.total) * 100).toFixed(1) : "0.0";
-      console.log(`  ${a.name.padEnd(28)} ${formatTokens(a.total).padStart(8)}  ${share}%`);
+    for (const a of stats.byAgentActivity) {
+      const share = stats.agentSessions ? ((a.sessions / stats.agentSessions) * 100).toFixed(1) : "0.0";
+      console.log(`  ${a.name.padEnd(28)} ${String(a.sessions).padStart(8)} sessions  ${share}%`);
     }
     console.log(`\nTop projects:`);
     for (const p of stats.byProject.slice(0, 8)) {
