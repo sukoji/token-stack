@@ -53,7 +53,7 @@ Cards have intentional native ratios, so a README can stay balanced instead of b
 | Two-column profile grid | `generate --card summary --compact --chart grass` | 340×200 | Pair with `github-profile-summary-cards` or another compact card |
 | Profile hero | `generate --card summary` | 495×250 | One clear all-time headline |
 | Full-row activity | `generate --card activity --days 30` | 495×220 | Weekly/monthly momentum |
-| Full-row agent mix | `generate --card agents` | 495×220 | Claude Code / Codex / Gemini workflow split |
+| Full-row agent mix | `generate --card agents` | 495×150–220 | Claude Code / Codex / Gemini workflow split |
 | Model mix companion | `generate --card models` | 495×220 | Place beside activity or agents in a two-column layout |
 
 For compact summary trends, choose `--chart bars` for immediate comparison, `--chart line` for a smoother

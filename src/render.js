@@ -299,16 +299,23 @@ ${legend}
 export function renderAgents(stats, opts = {}) {
   const { speed = 1, anim = true, title = "AI Coding Agents" } = opts;
   const t = resolveTheme(opts.theme);
-  const W = 495, H = 220;
-  const agents = stats.byAgent ?? [];
+  const W = 495;
+  const agents = (stats.byAgent ?? []).slice(0, 6);
+  // A single connected agent is common on first run. Keep that card compact
+  // rather than leaving an unhelpful empty panel under one row.
+  const H = agents.length <= 2 ? 150 : 220;
   const total = Math.max(stats.totals.total, 1);
-  const rows = agents.slice(0, 6).map((agent, i) => {
+  const barX = 175, barW = 165, valueX = 470;
+  const rows = agents.map((agent, i) => {
     const y = 62 + i * 25;
-    const width = Math.max(2, Math.round((agent.total / total) * 250));
+    const width = Math.max(2, Math.round((agent.total / total) * barW));
     const pct = ((agent.total / total) * 100).toFixed(1);
-    return `<g class="f" style="${delay(i + 1, 0.12, speed)}"><text x="25" y="${y}" font-size="12" fill="${t.text}">${esc(agent.name)}</text><rect x="165" y="${y - 10}" width="250" height="9" rx="4.5" fill="${t.track}"/><rect class="bx" style="${delay(i + 1, 0.12, speed)}" x="165" y="${y - 10}" width="${width}" height="9" rx="4.5" fill="${t.bars[i % t.bars.length]}"/><text x="470" y="${y}" font-size="11" text-anchor="end" fill="${t.subtext}">${pct}% · ${formatTokens(agent.total)}</text></g>`;
+    return `<g class="f" style="${delay(i + 1, 0.12, speed)}"><text x="25" y="${y}" font-size="12" fill="${t.text}">${esc(agent.name)}</text><rect x="${barX}" y="${y - 10}" width="${barW}" height="9" rx="4.5" fill="${t.track}"/><rect class="bx" style="${delay(i + 1, 0.12, speed)}" x="${barX}" y="${y - 10}" width="${width}" height="9" rx="4.5" fill="${t.bars[i % t.bars.length]}"/><text x="${valueX}" y="${y}" font-size="11" text-anchor="end" fill="${t.subtext}">${pct}% · ${formatTokens(agent.total)}</text></g>`;
   }).join("\n");
-  const body = `<g font-family="'Segoe UI',Ubuntu,Sans-Serif"><text class="f" x="25" y="33" font-size="16" font-weight="600" fill="${t.title}">◈ ${esc(title)}</text><text class="f" style="${delay(1, 0.12, speed)}" x="470" y="33" font-size="11" text-anchor="end" fill="${t.subtext}">local data · all time</text>${rows || `<text x="25" y="76" font-size="12" fill="${t.subtext}">No agent usage found yet.</text>`}</g>`;
+  const hint = agents.length === 1
+    ? `<text class="f" style="${delay(3, 0.12, speed)}" x="25" y="112" font-size="11" fill="${t.subtext}">Add Codex or Gemini sources to compare your agent mix.</text>`
+    : "";
+  const body = `<g font-family="'Segoe UI',Ubuntu,Sans-Serif"><text class="f" x="25" y="33" font-size="16" font-weight="600" fill="${t.title}">◈ ${esc(title)}</text><text class="f" style="${delay(1, 0.12, speed)}" x="470" y="33" font-size="11" text-anchor="end" fill="${t.subtext}">local data · all time</text>${rows || `<text x="25" y="76" font-size="12" fill="${t.subtext}">No agent usage found yet.</text>`}${hint}</g>`;
   return frame(W, H, t, title, body, styles({ anim, speed }), opts.scale);
 }
 

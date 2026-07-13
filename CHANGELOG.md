@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3
+
+- Make the agent card compact for a single source and prevent bar/value overlap.
+
 ## 0.2.2
 
 - Make the npm package the default Quick Start and hook command.

@@ -13,6 +13,8 @@ test("agent card shows a percentage distribution", () => {
   const svg = renderAgents({ totals: { total: 100 }, byAgent: [{ name: "claude-code", total: 60 }, { name: "codex", total: 40 }] }, { anim: false });
   assert.match(svg, /claude-code/);
   assert.match(svg, /60\.0%/);
+  assert.match(svg, /width="495" height="150"/);
+  assert.match(svg, /x="175"/);
 });
 
 test("scale changes intrinsic SVG dimensions without changing its viewBox", () => {
