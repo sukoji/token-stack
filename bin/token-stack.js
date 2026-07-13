@@ -14,7 +14,7 @@ const PROVIDERS = ["auto", "claude"];
 const HELP = `token-stack — animated token-usage cards from your local Claude Code sessions
 
 Usage:
-  npx github:sukoji/token-stack [command] [options]
+  npx @sukojin/token-stack [command] [options]
 
 Commands:
   generate    Write SVG card(s) to disk (default)
@@ -115,7 +115,7 @@ function parseAgentSource(value) {
 function printInit(opts) {
   const gist = opts.gist || "YOUR_GIST_ID";
   console.log("Add this command to the SessionEnd hook in ~/.claude/settings.json:");
-  console.log(JSON.stringify({ hooks: { SessionEnd: [{ hooks: [{ type: "command", command: `npx github:sukoji/token-stack sync --card all --gist ${gist}` }] }] } }, null, 2));
+  console.log(JSON.stringify({ hooks: { SessionEnd: [{ hooks: [{ type: "command", command: `npx @sukojin/token-stack sync --card all --gist ${gist}` }] }] } }, null, 2));
   console.log("\nThen paste this into your README:");
   console.log(`![token-stack](https://gist.githubusercontent.com/<you>/${gist}/raw/token-stack-summary.svg)`);
   console.log("\nThis command only prints instructions; it never changes your Claude settings.");

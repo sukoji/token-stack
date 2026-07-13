@@ -1,6 +1,6 @@
 {
   "name": "@sukojin/token-stack",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Private, shareable AI coding activity cards for your GitHub README.",
   "type": "module",
   "bin": {

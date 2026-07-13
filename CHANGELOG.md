@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- Make the npm package the default Quick Start and hook command.
+
 ## 0.2.1
 
 - Keep GitHub npx as the documented default until the npm publish secret is configured.

@@ -5,6 +5,7 @@
 [![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](./LICENSE)
 [![node](https://img.shields.io/badge/node-%E2%89%A518-3fb950?style=flat-square)](https://nodejs.org)
 [![zero dependencies](https://img.shields.io/badge/dependencies-0-8b949e?style=flat-square)](./package.json)
+[![npm](https://img.shields.io/npm/v/@sukojin/token-stack?style=flat-square)](https://www.npmjs.com/package/@sukojin/token-stack)
 
 `token-stack` reads the local JSONL transcripts created by Claude Code, aggregates token usage, and renders animated SVG cards for a GitHub profile, project README, or blog. Your transcripts stay on your machine; only the SVG you choose to publish leaves it.
 
@@ -21,13 +22,15 @@
 
 ```bash
 # Create cards in the current directory
-npx github:sukoji/token-stack generate --card all
+npx @sukojin/token-stack generate --card all
 
 # Or create/update a Gist and print README embeds
-npx github:sukoji/token-stack sync --card all
+npx @sukojin/token-stack sync --card all
 ```
 
-Re-run `sync --gist <id>` to refresh the same public image URL everywhere it is embedded. The npm package will be published as `@sukojin/token-stack` when the repository `NPM_TOKEN` secret is configured.
+Re-run `sync --gist <id>` to refresh the same public image URL everywhere it is embedded.
+
+Prefer a global install? `npm install --global @sukojin/token-stack`, then use `token-stack` directly.
 
 ## Cards
 
@@ -64,7 +67,7 @@ without distorting the ratio, which is useful when a README renderer does not ap
 The `agents` card makes a profile reflect how you actually work, not just which model you used. The built-in Claude source is labelled `claude-code`. Add another JSONL-compatible source with an explicit label:
 
 ```bash
-npx github:sukoji/token-stack generate --card agents \
+npx @sukojin/token-stack generate --card agents \
   --agent-source codex:/path/to/codex-usage-jsonl \
   --agent-source gemini:/path/to/gemini-usage-jsonl
 ```
@@ -103,7 +106,7 @@ The explicit path is deliberate: providers can change private local storage form
 Run this once to get a safe, copyable setup snippet:
 
 ```bash
-npx github:sukoji/token-stack init --gist YOUR_GIST_ID
+npx @sukojin/token-stack init --gist YOUR_GIST_ID
 ```
 
 It prints a Claude Code `SessionEnd` hook that runs `token-stack sync`. Review and add it to your `~/.claude/settings.json`, or schedule the same command with Task Scheduler / cron.
@@ -121,7 +124,7 @@ npm test
 npm pack --dry-run
 ```
 
-Push a `v*` tag to publish a release. The workflow runs tests and publishes with the repository `NPM_TOKEN` secret; it safely skips publishing when the secret is absent.
+Push a `v*` tag to publish a release. The workflow runs tests and publishes `@sukojin/token-stack` with the repository `NPM_TOKEN` secret; it safely skips publishing when the secret is absent.
 
 ## Requirements
 
