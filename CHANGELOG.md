@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Keep GitHub npx as the documented default until the npm publish secret is configured.
+
 ## 0.2.0
 
 - Add npm publish and multi-version CI workflows.

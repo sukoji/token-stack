@@ -21,13 +21,13 @@
 
 ```bash
 # Create cards in the current directory
-npx @sukojin/token-stack generate --card all
+npx github:sukoji/token-stack generate --card all
 
 # Or create/update a Gist and print README embeds
-npx @sukojin/token-stack sync --card all
+npx github:sukoji/token-stack sync --card all
 ```
 
-Re-run `sync --gist <id>` to refresh the same public image URL everywhere it is embedded.
+Re-run `sync --gist <id>` to refresh the same public image URL everywhere it is embedded. The npm package will be published as `@sukojin/token-stack` when the repository `NPM_TOKEN` secret is configured.
 
 ## Cards
 
@@ -64,7 +64,7 @@ without distorting the ratio, which is useful when a README renderer does not ap
 The `agents` card makes a profile reflect how you actually work, not just which model you used. The built-in Claude source is labelled `claude-code`. Add another JSONL-compatible source with an explicit label:
 
 ```bash
-npx @sukojin/token-stack generate --card agents \
+npx github:sukoji/token-stack generate --card agents \
   --agent-source codex:/path/to/codex-usage-jsonl \
   --agent-source gemini:/path/to/gemini-usage-jsonl
 ```
@@ -103,7 +103,7 @@ The explicit path is deliberate: providers can change private local storage form
 Run this once to get a safe, copyable setup snippet:
 
 ```bash
-npx @sukojin/token-stack init --gist YOUR_GIST_ID
+npx github:sukoji/token-stack init --gist YOUR_GIST_ID
 ```
 
 It prints a Claude Code `SessionEnd` hook that runs `token-stack sync`. Review and add it to your `~/.claude/settings.json`, or schedule the same command with Task Scheduler / cron.
