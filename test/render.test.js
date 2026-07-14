@@ -36,4 +36,7 @@ test("passport derives a shareable archetype from session activity", () => {
   assert.match(svg, /Multi-Agent Operator/);
   assert.match(svg, /SUKOJI/);
   assert.match(svg, /AGENT PASSPORT/);
+  assert.match(svg, /passport-orbit/);
+  assert.match(svg, /PRIVATE BY DESIGN/);
+  assert.doesNotMatch(svg, /class="f"[^>]*transform="translate/);
 });
