@@ -627,8 +627,9 @@ export function renderActivity(stats, opts = {}) {
   const skylineLayout = chart === "skyline";
   const chartX = skylineLayout ? 14 : 25;
   const chartW = W - chartX * 2;
-  const baseY = skylineLayout ? 190 : 178;
-  const chartH = skylineLayout ? 138 : 108;
+  const baseY = skylineLayout ? 196 : 178;
+  const chartH = skylineLayout ? 153 : 108;
+  const headerY = skylineLayout ? 28 : 33;
   const windowTotal = days.reduce((a, d) => a + d.total, 0);
   const windowCost = days.reduce((a, d) => a + d.cost, 0);
   const drawChart = chart === "skyline" ? chartSkylineContinuous : chartBars;
@@ -636,8 +637,8 @@ export function renderActivity(stats, opts = {}) {
 
   const body = `
 <g font-family="'Segoe UI',Ubuntu,Sans-Serif">
-<text class="f" x="25" y="33" font-size="16" font-weight="600" fill="${t.title}">📊 ${esc(title)}</text>
-<text class="f" style="${delay(1, 0.12, speed)}" x="${W - 25}" y="33" font-size="12" text-anchor="end" fill="${t.subtext}">${formatTokens(windowTotal)} · ${formatCost(windowCost)} · ${days.length}d</text>
+<text class="f" x="25" y="${headerY}" font-size="16" font-weight="600" fill="${t.title}">📊 ${esc(title)}</text>
+<text class="f" style="${delay(1, 0.12, speed)}" x="${W - 25}" y="${headerY}" font-size="12" text-anchor="end" fill="${t.subtext}">${formatTokens(windowTotal)} · ${formatCost(windowCost)} · ${days.length}d</text>
 ${chartSvg}
 <text x="${chartX}" y="${baseY + (skylineLayout ? 17 : 18)}" font-size="10" fill="${t.subtext}">${days[0]?.date ?? ""}</text>
 <text x="${chartX + chartW}" y="${baseY + (skylineLayout ? 17 : 18)}" font-size="10" text-anchor="end" fill="${t.subtext}">${days[days.length - 1]?.date ?? ""}</text>
