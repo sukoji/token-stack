@@ -31,7 +31,7 @@ test("skyline chart renders a night city for compact and activity cards", () => 
   assert.match(activity, /skyline-window/);
   assert.match(activity, /skyline-street/);
   assert.match(activity, /class="f skyline-encoding"/);
-  assert.match(activity, /DAILY TOKENS &#8594; SKYLINE HEIGHT/);
+  assert.match(activity, /DAILY TOKENS<\/tspan><tspan[^>]+>build the skyline/);
   assert.match(activity, /<rect x="14" y="43" width="467" height="153" rx="7"\/>/);
   assert.match(activity, /clipPath id="skylineClip/);
   assert.match(activity, /clip-path="url\(#skylineClip/);
