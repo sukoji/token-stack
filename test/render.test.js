@@ -24,12 +24,36 @@ test("skyline chart renders a night city for compact and activity cards", () => 
   const activity = renderActivity(stats, { anim: false, chart: "skyline", sky: "night" });
   assert.match(activity, /skyline-luminary/);
   assert.match(activity, /data-sky="night"/);
-  assert.match(activity, /skyline-field/);
+  assert.match(activity, /skyline-fabric/);
   assert.match(activity, /skyline-house/);
   assert.match(activity, /skyline-midrise/);
   assert.match(activity, /skyline-landmark/);
   assert.match(activity, /skyline-window/);
   assert.match(activity, /skyline-street/);
+  assert.match(activity, /clipPath id="skylineClip/);
+  assert.match(activity, /clip-path="url\(#skylineClip/);
+});
+
+test("all-zero skyline is a field rather than an empty block chart", () => {
+  const stats = { totals: { total: 0, cost: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, byDay: [{ date: "2026-07-01", total: 0, cost: 0 }, { date: "2026-07-02", total: 0, cost: 0 }], streak: 0 };
+  const svg = renderActivity(stats, { anim: false, chart: "skyline", sky: "day" });
+  assert.match(svg, /skyline-field/);
+  assert.doesNotMatch(svg, /skyline-landmark/);
+});
+
+test("continuous skyline stays deterministic and valid across history lengths", () => {
+  for (const count of [5, 30, 180]) {
+    const stats = {
+      totals: { total: 1, cost: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      byDay: Array.from({ length: count }, (_, i) => ({ date: `2026-01-${String((i % 28) + 1).padStart(2, "0")}`, total: i % 11 === 0 ? 1000 : i % 4 === 0 ? 90 : i % 3 === 0 ? 12 : 0, cost: 0 })),
+      streak: 0,
+    };
+    const first = renderActivity(stats, { anim: false, chart: "skyline", sky: "dusk" });
+    const second = renderActivity(stats, { anim: false, chart: "skyline", sky: "dusk" });
+    assert.equal(first, second);
+    assert.match(first, /skyline-fabric/);
+    assert.doesNotMatch(first, /NaN|undefined/);
+  }
 });
 
 test("scale changes intrinsic SVG dimensions without changing its viewBox", () => {
