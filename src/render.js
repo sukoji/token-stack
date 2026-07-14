@@ -121,7 +121,7 @@ function chartGrass(days, t, box, { anim, speed }) {
 
 const SKY_PHASES = {
   dawn: { sky: ["#32436d", "#d58a7d", "#f4c98e"], luminary: "#fff0bd", field: "#527b4f", grass: "#d7e79d", window: "#fff3cc", stars: true, palette: { house: ["#cf7b52", "#e0a25b", "#b9674a", "#d89b68", "#c77961"], midrise: ["#5b8d98", "#6e87a9", "#579b92", "#7f82a9", "#5a8494"], highrise: ["#587dc0", "#776fbc", "#5d9bc1", "#826caa", "#527da2"], landmark: ["#aa77dd", "#679cf2", "#d878b2", "#70bdca", "#cb8a58"] } },
-  day: { sky: ["#69bce0", "#b8e4eb", "#f4d7a8"], luminary: "#fff1a4", field: "#5d9154", grass: "#d6e891", window: "#eaf5f2", stars: false, palette: { house: ["#d9794d", "#e0a05d", "#bd6847", "#d89362", "#c8775c"], midrise: ["#6f9294", "#7e91a6", "#6a9b8b", "#8792aa", "#668b96"], highrise: ["#597e98", "#6c79a0", "#548f9c", "#7c769b", "#517f91"], landmark: ["#707bb0", "#587fae", "#a2749f", "#5d9096", "#a47e5e"] } },
+  day: { sky: ["#69bce0", "#b8e4eb", "#f4d7a8"], luminary: "#fff1a4", field: "#5d9154", grass: "#d6e891", window: "#eaf5f2", stars: false, palette: { house: ["#b27d60", "#c79570", "#a66f58", "#b7886b", "#9e725e"], midrise: ["#718d99", "#849aa0", "#6f9090", "#8a99a1", "#6d8792"], highrise: ["#526e7d", "#627987", "#547c87", "#6b8290", "#4f7180"], landmark: ["#597a90", "#496f87", "#698492", "#567d86", "#738896"] } },
   dusk: { sky: ["#26365c", "#9b5c75", "#ea9c6a"], luminary: "#ffe0a3", field: "#426c49", grass: "#bddb83", window: "#fff0bc", stars: true, palette: { house: ["#c96f4f", "#dc9758", "#ad5f49", "#d28762", "#bd7058"], midrise: ["#4f7f91", "#6376a2", "#4b8e86", "#716ea1", "#4d748d"], highrise: ["#4c70b5", "#6a5cb0", "#4f90b2", "#755ca8", "#496e9c"], landmark: ["#9d61d8", "#5591ee", "#cf6ba5", "#57adbd", "#c47e4d"] } },
   night: { sky: ["#11183e", "#36306c", "#95627a"], luminary: "#fff4c7", field: "#315240", grass: "#a7d78d", window: "#fff3c4", stars: true, palette: { house: ["#af6048", "#c48a4e", "#985044", "#ba7959", "#a95d50"], midrise: ["#3b7585", "#526b98", "#3b8379", "#5c6795", "#416d82"], highrise: ["#426daf", "#6258a8", "#3f8dae", "#6d55a1", "#3e6f99"], landmark: ["#925ad0", "#4b8ce9", "#bd6297", "#55aabb", "#b9774c"] } },
 };
@@ -207,7 +207,7 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now }
   const heightScore = raw.map((value, index) => value * 0.7 + smooth[index] * 0.3);
   const densityScore = raw.map((value, index) => value * 0.25 + smooth[index] * 0.75);
   const base = y + h - (detail ? 7 : 5);
-  const lots = clamp(days.length * (detail ? 2 : 1), 24, detail ? 72 : 48);
+  const lots = clamp(Math.round(days.length * (detail ? .9 : .65)), Math.min(12, days.length * 2), detail ? 42 : 30);
   const lotWidth = w / lots;
   const backgroundLots = Math.max(20, Math.round(lots * 0.72));
   const defs = [`<clipPath id="skylineScene"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7"/></clipPath>`];
@@ -237,7 +237,7 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now }
     } else if (width >= 3.5) {
       windows = `<path d="M${(left + width * .5).toFixed(1)} ${top + 4}V${base - 3}" stroke="${phase.window}" stroke-opacity=".35" stroke-width=".7"/>`;
     }
-    const crown = prominence > .72 ? `<path d="M${(left + width / 2).toFixed(1)} ${top - Math.min(12, height * .16)}v${Math.min(12, height * .16)}" stroke="${phase.window}" stroke-opacity=".82" stroke-width="${tier === "landmark" ? "1.1" : ".7"}"/>` : "";
+    const crown = tier === "landmark" && prominence > .72 ? `<path d="M${(left + width / 2).toFixed(1)} ${top - Math.min(12, height * .16)}v${Math.min(12, height * .16)}" stroke="${phase.window}" stroke-opacity=".82" stroke-width="1.1"/>` : "";
     foreground.push(`<g class="skyline-${tier}"><title>${label}</title><path class="by skyline-building skyline-${tier}-${shape % 5}" style="${delay(delayIndex, .025, speed)}" d="${path}" fill="${color}" fill-opacity="${opacity}"/>${crown}<g clip-path="url(#${clipId})">${face}${windows}</g></g>`);
   };
 
@@ -270,8 +270,8 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now }
       foreground.push(`<g class="skyline-field"><path d="M${left.toFixed(1)} ${base}V${(base - 3).toFixed(1)}q${(width / 2).toFixed(1)} -2 ${width.toFixed(1)} 0V${base}Z" fill="${phase.field}"/><circle cx="${(left + width * .5).toFixed(1)}" cy="${(base - treeHeight).toFixed(1)}" r="${Math.max(1.3, width * .18).toFixed(1)}" fill="${phase.grass}" fill-opacity=".9"/><path d="M${(left + width * .5).toFixed(1)} ${base - 2}v${-(treeHeight - 2)}" stroke="#384c38" stroke-width=".8"/></g>`);
       continue;
     }
-    const tier = heightValue < .22 ? "house" : heightValue < .48 ? "midrise" : "highrise";
-    const height = tier === "house" ? 8 + heightValue * 22 : tier === "midrise" ? 13 + heightValue * 34 : 22 + heightValue * 43;
+    const tier = heightValue < .28 ? "house" : "midrise";
+    const height = tier === "house" ? 7 + heightValue * 13 : 10 + heightValue * 20;
     addBuilding({
       id: `lot${i}`,
       tier,
@@ -292,8 +292,8 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now }
     .sort((a, b) => b.value - a.value);
   const peaks = [];
   for (const candidate of candidatePeaks) {
-    if (peaks.every((peak) => Math.abs(peak.index - candidate.index) > 2)) peaks.push(candidate);
-    if (peaks.length === (detail ? 6 : 3)) break;
+    if (peaks.every((peak) => Math.abs(peak.index - candidate.index) > 5)) peaks.push(candidate);
+    if (peaks.length === (detail ? 3 : 2)) break;
   }
   if (!peaks.length && Math.max(...raw, 0) > .2) peaks.push({ index: raw.indexOf(Math.max(...raw)), value: Math.max(...raw) });
   for (const { index, value } of peaks.sort((a, b) => a.index - b.index)) {
@@ -301,7 +301,9 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now }
     const width = Math.max(7, dayWidth * (.62 + value * .18));
     const left = x + (index + .5) * dayWidth - width / 2;
     const shape = Math.floor(skylineHash(index * 41 + 7) * 5);
-    const height = Math.min(h * .87, 36 + heightScore[index] * h * .62);
+    const height = Math.min(h * .72, 28 + heightScore[index] * h * .4);
+    const podiumWidth = Math.min(dayWidth * 1.7, width * 1.65);
+    foreground.push(`<rect class="skyline-podium" x="${(left - (podiumWidth - width) / 2).toFixed(1)}" y="${(base - 10).toFixed(1)}" width="${podiumWidth.toFixed(1)}" height="10" fill="${phase.palette.midrise[(shape + 2) % phase.palette.midrise.length]}" fill-opacity=".94"/>`);
     addBuilding({
       id: `peak${index}`,
       tier: "landmark",
