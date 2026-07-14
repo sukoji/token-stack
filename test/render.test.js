@@ -41,6 +41,33 @@ test("all-zero skyline is a field rather than an empty block chart", () => {
   assert.doesNotMatch(svg, /skyline-landmark/);
 });
 
+test("skyline does not turn a sustained activity plateau into repeated towers", () => {
+  const stats = {
+    totals: { total: 1, cost: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    byDay: Array.from({ length: 30 }, (_, i) => ({
+      date: `2026-07-${String(i + 1).padStart(2, "0")}`,
+      total: i >= 9 && i <= 18 ? 1000 : 120,
+      cost: 0,
+    })),
+    streak: 0,
+  };
+  const svg = renderActivity(stats, { anim: false, chart: "skyline", sky: "day" });
+  const landmarks = svg.match(/class="skyline-landmark"/g) ?? [];
+  assert.ok(landmarks.length <= 2);
+  assert.doesNotMatch(svg, /skyline-crown/);
+});
+
+test("a completely even skyline stays a city district without forced landmarks", () => {
+  const stats = {
+    totals: { total: 1, cost: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    byDay: Array.from({ length: 30 }, (_, i) => ({ date: `2026-07-${String(i + 1).padStart(2, "0")}`, total: 500, cost: 0 })),
+    streak: 0,
+  };
+  const svg = renderActivity(stats, { anim: false, chart: "skyline", sky: "day" });
+  assert.doesNotMatch(svg, /skyline-landmark/);
+  assert.match(svg, /skyline-midrise/);
+});
+
 test("continuous skyline stays deterministic and valid across history lengths", () => {
   for (const count of [5, 30, 180]) {
     const stats = {

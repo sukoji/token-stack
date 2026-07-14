@@ -84,11 +84,11 @@ The gallery above intentionally shows three placements: a 495px hero, a responsi
 the raw SVG's intrinsic size needs adjusting.
 
 For compact summary trends, choose `--chart bars` for immediate comparison, `--chart line` for a smoother
-trend, `--chart grass` for a GitHub-style long-term contribution view, or `--chart skyline` for a warm animated city silhouette. Skyline keeps token volume as building height while varying roofs, setbacks, domes, and spires deterministically. Use `--days` to match the story:
+trend, `--chart grass` for a GitHub-style long-term contribution view, or `--chart skyline` for a warm animated city silhouette. Skyline keeps token volume as building height while varying flat crowns, setbacks, rounded roofs, and tapered towers deterministically. Use `--days` to match the story:
 
 Skyline reads like an activity landscape: no activity becomes a small field, light activity becomes homes, then mid-rise and high-rise buildings; only the busiest relative days become distinctive landmark towers. The same history always produces the same city.
 
-It is rendered as connected activity districts rather than one building per day: a low continuous streetwall and distant city keep the horizon intact, while local peaks become a few landmark towers. Building façades and windows are clipped to their exact silhouettes, so architectural detail cannot spill outside a sloped roof or tapered tower.
+It is rendered as connected activity districts rather than one building per day: a low continuous streetwall and distant city keep the horizon intact, while only prominent local peaks become one or two landmark towers. A sustained activity plateau stays a dense city district instead of becoming repeated towers. Building façades and windows are clipped to their exact silhouettes, so architectural detail cannot spill outside a sloped roof or tapered tower.
 
 By default, Skyline uses the machine's local time: dawn, day, dusk, and night each have a distinct sky, sun or moon, building palette, and window lighting. Scheduled `sync` runs therefore keep an embedded card in step with local time. Use `--sky dawn`, `--sky day`, `--sky dusk`, or `--sky night` to lock a look.
 `7` for a weekly update, `30` for a monthly profile, and the grass default (17 weeks) for consistency.
