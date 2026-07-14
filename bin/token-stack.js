@@ -35,6 +35,7 @@ Options:
   --no-anim         render static cards
   --title <text>    custom card title
   --name <text>     display name for the passport card
+  --github <handle> embed this public GitHub avatar in the passport card
   --season <text>   passport season label                (default: Season 01)
   --archetype <x>   passport archetype or auto           (default: auto)
   -o, --out <path>  output file or directory             (default: .)
@@ -92,6 +93,7 @@ function parseArgs(argv) {
       case "--breakdown": opts.breakdown = args.shift(); break;
       case "--title": opts.title = args.shift(); break;
       case "--name": opts.name = args.shift(); break;
+      case "--github": opts.github = args.shift(); break;
       case "--season": opts.season = args.shift(); break;
       case "--archetype": opts.archetype = args.shift(); break;
       case "-o": case "--out": opts.out = args.shift(); break;
@@ -140,9 +142,24 @@ function printInit(opts) {
   console.log("\nThis command only prints instructions; it never changes your Claude settings.");
 }
 
-function renderCards(stats, opts) {
+async function loadGithubAvatar(handle) {
+  if (!/^[A-Za-z0-9-]{1,39}$/.test(handle ?? "")) throw new Error("--github must be a valid GitHub handle.");
+  const headers = { "User-Agent": "token-stack", Accept: "application/vnd.github+json" };
+  const profile = await fetch(`https://api.github.com/users/${encodeURIComponent(handle)}`, { headers });
+  if (!profile.ok) throw new Error(`Could not find GitHub user "${handle}" (${profile.status}).`);
+  const { avatar_url: avatarUrl } = await profile.json();
+  const image = await fetch(`${avatarUrl}${avatarUrl.includes("?") ? "&" : "?"}size=160`, { headers: { "User-Agent": "token-stack" } });
+  const type = image.headers.get("content-type")?.split(";")[0] ?? "";
+  if (!image.ok || !["image/png", "image/jpeg", "image/webp"].includes(type)) throw new Error("GitHub avatar could not be read as a PNG, JPEG, or WebP image.");
+  const bytes = Buffer.from(await image.arrayBuffer());
+  if (bytes.length > 1024 * 1024) throw new Error("GitHub avatar is unexpectedly large (over 1 MB).");
+  return `data:${type};base64,${bytes.toString("base64")}`;
+}
+
+async function renderCards(stats, opts) {
   // `all` remains the compact analytics set users already automate. Passport
   // is an intentional, share-oriented opt-in card.
+  if (opts.github && (opts.card === "passport")) opts.avatarDataUri = await loadGithubAvatar(opts.github);
   const names = opts.card === "all" ? Object.keys(CARDS).filter((name) => name !== "passport") : [opts.card];
   return names.map((name) => {
     const render = CARDS[name];
@@ -183,7 +200,7 @@ const stats = publicStats(aggregate(history, { days: opts.days }), opts.privacy)
 
 switch (opts.command) {
   case "generate": {
-    const cards = renderCards(stats, opts);
+    const cards = await renderCards(stats, opts);
     for (const card of cards) {
       const file =
         opts.out.endsWith(".svg") && cards.length === 1
@@ -196,7 +213,7 @@ switch (opts.command) {
     break;
   }
   case "sync": {
-    const cards = renderCards(stats, opts);
+    const cards = await renderCards(stats, opts);
     const res = syncToGist(cards, { gistId: opts.gist, isPublic: opts.public });
     console.log(`gist: https://gist.github.com/${res.gistId}`);
     console.log("\nEmbed in any README:\n");

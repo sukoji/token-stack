@@ -59,11 +59,13 @@ The Passport does not score productivity or reward token consumption. It assigns
 
 ```bash
 # Write a shareable Passport without changing your existing cards
-npx @sukojin/token-stack generate --card passport --name YOUR_HANDLE
+npx @sukojin/token-stack generate --card passport --name YOUR_HANDLE --github YOUR_GITHUB_HANDLE
 
 # Publish it to your existing Gist when you want it in a README
-npx @sukojin/token-stack sync --card passport --name YOUR_HANDLE --gist YOUR_GIST_ID
+npx @sukojin/token-stack sync --card passport --name YOUR_HANDLE --github YOUR_GITHUB_HANDLE --gist YOUR_GIST_ID
 ```
+
+`--github` is optional. When set, token-stack fetches only that public GitHub avatar once, embeds it into the SVG, and does not put an external image URL in your README.
 
 ## README layout guide
 

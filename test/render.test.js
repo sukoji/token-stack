@@ -40,3 +40,10 @@ test("passport derives a shareable archetype from session activity", () => {
   assert.match(svg, /PRIVATE BY DESIGN/);
   assert.doesNotMatch(svg, /class="f"[^>]*transform="translate/);
 });
+
+test("passport can embed an opt-in avatar without an external image request", () => {
+  const avatar = "data:image/png;base64,iVBORw0KGgo=";
+  const svg = renderPassport({ agentSessions: 1, byAgentActivity: [], byModel: [], streak: 0 }, { anim: false, avatarDataUri: avatar });
+  assert.match(svg, /passportAvatarClip/);
+  assert.match(svg, new RegExp(avatar));
+});
