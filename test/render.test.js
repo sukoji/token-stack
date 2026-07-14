@@ -21,7 +21,9 @@ test("agent card shows a percentage distribution", () => {
 test("skyline chart renders a night city for compact and activity cards", () => {
   const stats = { totals: { total: 1000, cost: 1, input: 1, output: 1, cacheRead: 1, cacheWrite: 1 }, byDay: [{ date: "2026-07-01", total: 20, cost: 0.1 }, { date: "2026-07-02", total: 100, cost: 0.5 }], streak: 1 };
   assert.match(renderSummaryCompact(stats, { anim: false, chart: "skyline" }), /skylineSky/);
-  assert.match(renderActivity(stats, { anim: false, chart: "skyline" }), /skylineMoon/);
+  const activity = renderActivity(stats, { anim: false, chart: "skyline" });
+  assert.match(activity, /skylineMoon/);
+  assert.match(activity, /skyline-roof-/);
 });
 
 test("scale changes intrinsic SVG dimensions without changing its viewBox", () => {

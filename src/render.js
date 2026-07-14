@@ -133,12 +133,29 @@ function chartSkyline(days, t, box, { anim, speed }) {
     const raw = d.total / max;
     const bh = d.total === 0 ? Math.max(4, Math.round(h * 0.08)) : Math.max(8, Math.round((0.15 + raw * 0.82) * h));
     const bx = x + i * step + 0.6;
+    const base = y + h;
+    const top = base - bh;
     const fill = i === days.length - 1 ? t.big[1] : t.bars[0];
-    const roof = i % 7 === 0 && bh > 22 ? `<path d="M${(bx + bw / 2).toFixed(1)} ${y + h - bh - 5}v5" stroke="#fff3c4" stroke-opacity=".65"/>` : "";
+    const type = (i * 11 + Math.round(raw * 19)) % 6;
+    const left = bx.toFixed(1), right = (bx + bw).toFixed(1), center = (bx + bw / 2).toFixed(1);
+    const silhouette = bw < 7 || bh < 20
+      ? `<rect class="by skyline-building" style="${delay(i, 0.025, speed)}" x="${left}" y="${top}" width="${bw.toFixed(1)}" height="${bh}" rx="${Math.min(2, bw / 2).toFixed(1)}" fill="${fill}"/>`
+      : (() => {
+        const dPath = [
+          `M${left} ${base}V${top}H${right}V${base}Z`,
+          `M${left} ${base}V${top + 9}H${(bx + bw * .2).toFixed(1)}V${top}H${(bx + bw * .72).toFixed(1)}V${top + 5}H${right}V${base}Z`,
+          `M${left} ${base}V${top + 10}L${center} ${top}L${right} ${top + 10}V${base}Z`,
+          `M${left} ${base}V${top + 8}Q${center} ${top - 3} ${right} ${top + 8}V${base}Z`,
+          `M${left} ${base}V${top + 11}H${(bx + bw * .38).toFixed(1)}V${top}H${(bx + bw * .62).toFixed(1)}V${top + 11}H${right}V${base}Z`,
+          `M${left} ${base}V${top + 6}H${(bx + bw * .3).toFixed(1)}V${top + 2}H${(bx + bw * .7).toFixed(1)}V${top + 6}H${right}V${base}Z`,
+        ][type];
+        return `<path class="by skyline-building skyline-roof-${type}" style="${delay(i, 0.025, speed)}" d="${dPath}" fill="${fill}"/>`;
+      })();
+    const antenna = (type === 0 || type === 4) && bh > 26 ? `<path d="M${center} ${top - 6}v6" stroke="#fff3c4" stroke-opacity=".72"/>` : "";
     const windows = bw >= 7 && bh >= 20
-      ? Array.from({ length: Math.floor((bh - 10) / 9) }, (_, row) => `<rect x="${(bx + bw * 0.32).toFixed(1)}" y="${(y + h - bh + 6 + row * 9).toFixed(1)}" width="${Math.max(1, bw * 0.2).toFixed(1)}" height="2" rx=".5" fill="#fff3c4" fill-opacity="${row % 2 ? ".48" : ".8"}"/>`).join("")
+      ? Array.from({ length: Math.floor((bh - 13) / 9) }, (_, row) => `<rect x="${(bx + bw * .32).toFixed(1)}" y="${(top + 10 + row * 9).toFixed(1)}" width="${Math.max(1, bw * .2).toFixed(1)}" height="2" rx=".5" fill="#fff3c4" fill-opacity="${row % 2 ? ".48" : ".8"}"/>`).join("")
       : "";
-    return `<g><rect class="by" style="${delay(i, 0.025, speed)}" x="${bx.toFixed(1)}" y="${y + h - bh}" width="${bw.toFixed(1)}" height="${bh}" rx="${Math.min(2, bw / 2).toFixed(1)}" fill="${fill}"><title>${d.date}: ${formatTokens(d.total)}</title></rect>${roof}${windows}</g>`;
+    return `<g><title>${d.date}: ${formatTokens(d.total)}</title>${silhouette}${antenna}${windows}</g>`;
   }).join("");
   const svg = `<defs><linearGradient id="skylineSky" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#1b1b4b"/><stop offset=".58" stop-color="#4d3677"/><stop offset="1" stop-color="#ec7f65"/></linearGradient><radialGradient id="skylineMoon"><stop stop-color="#fff9d4"/><stop offset="1" stop-color="#ffd88a"/></radialGradient></defs><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="url(#skylineSky)"/>${stars}<circle class="f" style="${delay(2, 0.12, speed)}" cx="${x + w - 27}" cy="${y + 23}" r="10" fill="url(#skylineMoon)"/>${buildings}<path d="M${x} ${y + h + .5}H${x + w}" stroke="#ffd6a1" stroke-opacity=".72"/>`;
   const extraCss = anim ? `.sky-star{opacity:0;animation:twinkle ${(1.8 / speed).toFixed(2)}s ease-in-out infinite}@keyframes twinkle{50%{opacity:.3;transform:scale(.55)}}` : "";
