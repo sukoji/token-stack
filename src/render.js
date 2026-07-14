@@ -119,7 +119,33 @@ function chartGrass(days, t, box, { anim, speed }) {
   return { svg, extraCss: "" };
 }
 
-const CHARTS = { bars: chartBars, line: chartLine, grass: chartGrass };
+function chartSkyline(days, t, box, { anim, speed }) {
+  const { x, y, w, h } = box;
+  const max = Math.max(...days.map((d) => d.total), 1);
+  const step = w / days.length;
+  const bw = Math.max(1.5, step - 1.2);
+  const stars = Array.from({ length: Math.min(16, Math.max(7, Math.floor(w / 28))) }, (_, i) => {
+    const sx = x + 12 + ((i * 47) % Math.max(20, w - 24));
+    const sy = y + 10 + ((i * 19) % Math.max(15, Math.floor(h * 0.46)));
+    return `<circle class="sky-star" style="${delay(i, 0.08, speed)}" cx="${sx}" cy="${sy}" r="${i % 3 === 0 ? 1.3 : 0.8}" fill="#fff3c4"/>`;
+  }).join("");
+  const buildings = days.map((d, i) => {
+    const raw = d.total / max;
+    const bh = d.total === 0 ? Math.max(4, Math.round(h * 0.08)) : Math.max(8, Math.round((0.15 + raw * 0.82) * h));
+    const bx = x + i * step + 0.6;
+    const fill = i === days.length - 1 ? t.big[1] : t.bars[0];
+    const roof = i % 7 === 0 && bh > 22 ? `<path d="M${(bx + bw / 2).toFixed(1)} ${y + h - bh - 5}v5" stroke="#fff3c4" stroke-opacity=".65"/>` : "";
+    const windows = bw >= 7 && bh >= 20
+      ? Array.from({ length: Math.floor((bh - 10) / 9) }, (_, row) => `<rect x="${(bx + bw * 0.32).toFixed(1)}" y="${(y + h - bh + 6 + row * 9).toFixed(1)}" width="${Math.max(1, bw * 0.2).toFixed(1)}" height="2" rx=".5" fill="#fff3c4" fill-opacity="${row % 2 ? ".48" : ".8"}"/>`).join("")
+      : "";
+    return `<g><rect class="by" style="${delay(i, 0.025, speed)}" x="${bx.toFixed(1)}" y="${y + h - bh}" width="${bw.toFixed(1)}" height="${bh}" rx="${Math.min(2, bw / 2).toFixed(1)}" fill="${fill}"><title>${d.date}: ${formatTokens(d.total)}</title></rect>${roof}${windows}</g>`;
+  }).join("");
+  const svg = `<defs><linearGradient id="skylineSky" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#1b1b4b"/><stop offset=".58" stop-color="#4d3677"/><stop offset="1" stop-color="#ec7f65"/></linearGradient><radialGradient id="skylineMoon"><stop stop-color="#fff9d4"/><stop offset="1" stop-color="#ffd88a"/></radialGradient></defs><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="url(#skylineSky)"/>${stars}<circle class="f" style="${delay(2, 0.12, speed)}" cx="${x + w - 27}" cy="${y + 23}" r="10" fill="url(#skylineMoon)"/>${buildings}<path d="M${x} ${y + h + .5}H${x + w}" stroke="#ffd6a1" stroke-opacity=".72"/>`;
+  const extraCss = anim ? `.sky-star{opacity:0;animation:twinkle ${(1.8 / speed).toFixed(2)}s ease-in-out infinite}@keyframes twinkle{50%{opacity:.3;transform:scale(.55)}}` : "";
+  return { svg, extraCss };
+}
+
+const CHARTS = { bars: chartBars, line: chartLine, grass: chartGrass, skyline: chartSkyline };
 
 // 340x200 — same footprint as github-profile-summary-cards, so the two sit
 // side by side in a README without height mismatch. `chart` picks how the
@@ -218,36 +244,25 @@ ${spark}
 }
 
 export function renderActivity(stats, opts = {}) {
-  const { speed = 1, anim = true, title = "Token Activity" } = opts;
+  const { speed = 1, anim = true, title = "Token Activity", chart = "bars" } = opts;
   const t = resolveTheme(opts.theme);
   const days = stats.byDay;
   const W = 495, H = 220;
   const chartX = 25, chartW = W - 50, baseY = 178, chartH = 108;
-  const maxDay = Math.max(...days.map((d) => d.total), 1);
-  const bw = chartW / days.length - 2.5;
   const windowTotal = days.reduce((a, d) => a + d.total, 0);
   const windowCost = days.reduce((a, d) => a + d.cost, 0);
-
-  const bars = days
-    .map((d, i) => {
-      const h = Math.max(2, Math.round((d.total / maxDay) * chartH));
-      const x = chartX + i * (chartW / days.length);
-      return `<g>
-<rect class="by" style="${delay(i, 0.03, speed)}" x="${x.toFixed(1)}" y="${baseY - h}" width="${bw.toFixed(1)}" height="${h}" rx="2" fill="${i === days.length - 1 ? t.big[1] : t.bars[0]}"><title>${d.date}: ${formatTokens(d.total)}</title></rect>
-</g>`;
-    })
-    .join("\n");
+  const drawChart = chart === "skyline" ? chartSkyline : chartBars;
+  const { svg: chartSvg, extraCss } = drawChart(days, t, { x: chartX, y: baseY - chartH, w: chartW, h: chartH }, { anim, speed });
 
   const body = `
 <g font-family="'Segoe UI',Ubuntu,Sans-Serif">
 <text class="f" x="25" y="33" font-size="16" font-weight="600" fill="${t.title}">📊 ${esc(title)}</text>
 <text class="f" style="${delay(1, 0.12, speed)}" x="${W - 25}" y="33" font-size="12" text-anchor="end" fill="${t.subtext}">${formatTokens(windowTotal)} · ${formatCost(windowCost)} · ${days.length}d</text>
-${bars}
-<line x1="${chartX}" y1="${baseY + 1}" x2="${chartX + chartW}" y2="${baseY + 1}" stroke="${t.border}"/>
+${chartSvg}
 <text x="${chartX}" y="${baseY + 18}" font-size="10" fill="${t.subtext}">${days[0]?.date ?? ""}</text>
 <text x="${chartX + chartW}" y="${baseY + 18}" font-size="10" text-anchor="end" fill="${t.subtext}">${days[days.length - 1]?.date ?? ""}</text>
 </g>`;
-  return frame(W, H, t, title, body, styles({ anim, speed }), opts.scale);
+  return frame(W, H, t, title, body, styles({ anim, speed }, extraCss), opts.scale);
 }
 
 export function renderModels(stats, opts = {}) {
@@ -307,11 +322,11 @@ export function renderAgents(stats, opts = {}) {
   const agents = (stats.byAgentActivity ?? []).slice(0, 6);
   // A single connected agent is common on first run. Keep that card compact
   // rather than leaving an unhelpful empty panel under one row.
-  const H = agents.length <= 2 ? 150 : 220;
+  const H = Math.max(165, 78 + agents.length * 34);
   const total = Math.max(stats.agentSessions ?? agents.reduce((sum, agent) => sum + agent.sessions, 0), 1);
-  const barX = 175, barW = 165, valueX = 470;
+  const barX = 165, barW = 182, valueX = 470;
   const rows = agents.map((agent, i) => {
-    const y = 62 + i * 25;
+    const y = 70 + i * 34;
     const width = Math.max(2, Math.round((agent.sessions / total) * barW));
     const pct = ((agent.sessions / total) * 100).toFixed(1);
     return `<g class="f" style="${delay(i + 1, 0.12, speed)}"><text x="25" y="${y}" font-size="12" fill="${t.text}">${esc(agent.name)}</text><rect x="${barX}" y="${y - 10}" width="${barW}" height="9" rx="4.5" fill="${t.track}"/><rect class="bx" style="${delay(i + 1, 0.12, speed)}" x="${barX}" y="${y - 10}" width="${width}" height="9" rx="4.5" fill="${t.bars[i % t.bars.length]}"/><text x="${valueX}" y="${y}" font-size="11" text-anchor="end" fill="${t.subtext}">${pct}% · ${agent.sessions} session${agent.sessions === 1 ? "" : "s"}</text></g>`;

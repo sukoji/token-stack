@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { renderAgents, renderPassport, renderSummary, renderSummaryCompact } from "../src/render.js";
+import { renderActivity, renderAgents, renderPassport, renderSummary, renderSummaryCompact } from "../src/render.js";
 
 test("compact card renders a static accessible SVG", () => {
   const svg = renderSummaryCompact({ totals: { total: 1000, cost: 0.01, input: 400, output: 300, cacheRead: 200, cacheWrite: 100 }, byDay: [{ date: "2026-07-01", total: 1000, cost: 0.01 }], streak: 1 }, { anim: false, chart: "bars" });
@@ -14,8 +14,14 @@ test("agent card shows a percentage distribution", () => {
   assert.match(svg, /claude-code/);
   assert.match(svg, /60\.0%/);
   assert.match(svg, /6 sessions/);
-  assert.match(svg, /width="495" height="150"/);
-  assert.match(svg, /x="175"/);
+  assert.match(svg, /width="495" height="165"/);
+  assert.match(svg, /x="165"/);
+});
+
+test("skyline chart renders a night city for compact and activity cards", () => {
+  const stats = { totals: { total: 1000, cost: 1, input: 1, output: 1, cacheRead: 1, cacheWrite: 1 }, byDay: [{ date: "2026-07-01", total: 20, cost: 0.1 }, { date: "2026-07-02", total: 100, cost: 0.5 }], streak: 1 };
+  assert.match(renderSummaryCompact(stats, { anim: false, chart: "skyline" }), /skylineSky/);
+  assert.match(renderActivity(stats, { anim: false, chart: "skyline" }), /skylineMoon/);
 });
 
 test("scale changes intrinsic SVG dimensions without changing its viewBox", () => {

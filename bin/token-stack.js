@@ -26,7 +26,7 @@ Commands:
 Options:
   --card <name>     summary | activity | models | agents | passport | all   (default: summary)
   --compact         340x200 summary card (matches github-profile-summary-cards)
-  --chart <name>    compact trend style: bars | line | grass   (default: bars)
+  --chart <name>    trend style: bars | line | grass | skyline (default: bars)
   --breakdown <mode> summary bars: log | raw                  (default: log)
   --theme <name>    ${Object.keys(THEMES).join(" | ")}   (default: dark)
   --days <n>        window for the activity chart        (default: 30)

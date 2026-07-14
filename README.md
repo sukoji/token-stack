@@ -84,7 +84,7 @@ The gallery above intentionally shows three placements: a 495px hero, a responsi
 the raw SVG's intrinsic size needs adjusting.
 
 For compact summary trends, choose `--chart bars` for immediate comparison, `--chart line` for a smoother
-trend, or `--chart grass` for a GitHub-style long-term contribution view. Use `--days` to match the story:
+trend, `--chart grass` for a GitHub-style long-term contribution view, or `--chart skyline` for a warm animated city silhouette. Use `--days` to match the story:
 `7` for a weekly update, `30` for a monthly profile, and the grass default (17 weeks) for consistency.
 
 All cards are SVGs. `--scale 0.75`, `--scale 1`, and `--scale 1.25` change intrinsic output dimensions
@@ -135,7 +135,7 @@ Every supported provider adapter has fixture-backed tests for its session metada
 |---|---|---|
 | `--card` | `summary` | `summary`, `activity`, `models`, `agents`, `passport`, or `all` |
 | `--compact` | | 340×200 summary card |
-| `--chart` | `bars` | Compact trend: `bars`, `line`, or `grass` |
+| `--chart` | `bars` | Trend: `bars`, `line`, `grass`, or `skyline` (also works with the activity card) |
 | `--breakdown` | `log` | Summary comparison: `log` (readable) or `raw` (proportional tokens) |
 | `--theme` | `dark` | `dark`, `light`, `dracula`, or `tokyonight` |
 | `--days` | `30` | Activity-chart window |
