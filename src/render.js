@@ -131,31 +131,64 @@ function chartSkyline(days, t, box, { anim, speed }) {
   }).join("");
   const buildings = days.map((d, i) => {
     const raw = d.total / max;
-    const bh = d.total === 0 ? Math.max(4, Math.round(h * 0.08)) : Math.max(8, Math.round((0.15 + raw * 0.82) * h));
     const bx = x + i * step + 0.6;
     const base = y + h;
-    const top = base - bh;
-    const fill = i === days.length - 1 ? t.big[1] : t.bars[0];
-    const type = (i * 11 + Math.round(raw * 19)) % 6;
     const left = bx.toFixed(1), right = (bx + bw).toFixed(1), center = (bx + bw / 2).toFixed(1);
-    const silhouette = bw < 7 || bh < 20
-      ? `<rect class="by skyline-building" style="${delay(i, 0.025, speed)}" x="${left}" y="${top}" width="${bw.toFixed(1)}" height="${bh}" rx="${Math.min(2, bw / 2).toFixed(1)}" fill="${fill}"/>`
-      : (() => {
-        const dPath = [
-          `M${left} ${base}V${top}H${right}V${base}Z`,
-          `M${left} ${base}V${top + 9}H${(bx + bw * .2).toFixed(1)}V${top}H${(bx + bw * .72).toFixed(1)}V${top + 5}H${right}V${base}Z`,
-          `M${left} ${base}V${top + 10}L${center} ${top}L${right} ${top + 10}V${base}Z`,
-          `M${left} ${base}V${top + 8}Q${center} ${top - 3} ${right} ${top + 8}V${base}Z`,
-          `M${left} ${base}V${top + 11}H${(bx + bw * .38).toFixed(1)}V${top}H${(bx + bw * .62).toFixed(1)}V${top + 11}H${right}V${base}Z`,
-          `M${left} ${base}V${top + 6}H${(bx + bw * .3).toFixed(1)}V${top + 2}H${(bx + bw * .7).toFixed(1)}V${top + 6}H${right}V${base}Z`,
-        ][type];
-        return `<path class="by skyline-building skyline-roof-${type}" style="${delay(i, 0.025, speed)}" d="${dPath}" fill="${fill}"/>`;
-      })();
-    const antenna = (type === 0 || type === 4) && bh > 26 ? `<path d="M${center} ${top - 6}v6" stroke="#fff3c4" stroke-opacity=".72"/>` : "";
-    const windows = bw >= 7 && bh >= 20
-      ? Array.from({ length: Math.floor((bh - 13) / 9) }, (_, row) => `<rect x="${(bx + bw * .32).toFixed(1)}" y="${(top + 10 + row * 9).toFixed(1)}" width="${Math.max(1, bw * .2).toFixed(1)}" height="2" rx=".5" fill="#fff3c4" fill-opacity="${row % 2 ? ".48" : ".8"}"/>`).join("")
-      : "";
-    return `<g><title>${d.date}: ${formatTokens(d.total)}</title>${silhouette}${antenna}${windows}</g>`;
+    const type = (i * 13 + Math.round(raw * 37)) % 5;
+    if (d.total === 0) {
+      const fieldTop = base - Math.max(3, h * .045);
+      return `<g class="skyline-field"><title>${d.date}: no token activity</title><path d="M${left} ${base}V${fieldTop}q${(bw / 2).toFixed(1)} -3 ${bw.toFixed(1)} 0V${base}Z" fill="#315240"/><path d="M${(bx + bw * .24).toFixed(1)} ${fieldTop + 1}l1.3 -4m${(bw * .3).toFixed(1)} 4l-1.1 -3" stroke="#a7d78d" stroke-width=".8" stroke-linecap="round"/></g>`;
+    }
+    const tier = raw < .16 ? "house" : raw < .38 ? "midrise" : raw < .68 ? "highrise" : "landmark";
+    const palette = {
+      house: ["#cf7b52", "#e0a25b", "#b9674a", "#d89b68", "#c77961"],
+      midrise: ["#4e8b97", "#617ea5", "#4c9d8c", "#6a79a8", "#527d91"],
+      highrise: ["#527ec4", "#7169ba", "#4f9cc5", "#7e62b6", "#4585ad"],
+      landmark: ["#a26ee5", "#5d9df5", "#d975b5", "#6cc1d0", "#cf8d58"],
+    };
+    const fill = i === days.length - 1 ? t.big[1] : palette[tier][type];
+    const bh = tier === "house" ? Math.round(11 + raw * 68)
+      : tier === "midrise" ? Math.round(24 + raw * 58)
+        : tier === "highrise" ? Math.round(37 + raw * 70)
+          : Math.round(48 + raw * 60);
+    const top = base - Math.min(h * .96, bh);
+    let dPath = "";
+    let ornament = "";
+    if (tier === "house") {
+      dPath = type % 2 === 0
+        ? `M${left} ${base}V${top + 7}L${center} ${top}L${right} ${top + 7}V${base}Z`
+        : `M${left} ${base}V${top + 5}H${(bx + bw * .22).toFixed(1)}L${center} ${top}L${(bx + bw * .78).toFixed(1)} ${top + 5}H${right}V${base}Z`;
+      ornament = `<rect x="${(bx + bw * .56).toFixed(1)}" y="${(top + 6).toFixed(1)}" width="${Math.max(1, bw * .12).toFixed(1)}" height="${Math.max(3, bh * .25).toFixed(1)}" fill="#26384a"/>`;
+    } else if (tier === "midrise") {
+      dPath = [
+        `M${left} ${base}V${top + 6}H${(bx + bw * .18).toFixed(1)}V${top}H${right}V${base}Z`,
+        `M${left} ${base}V${top + 10}H${(bx + bw * .24).toFixed(1)}V${top + 3}H${(bx + bw * .72).toFixed(1)}V${top}H${right}V${base}Z`,
+        `M${left} ${base}V${top + 6}Q${center} ${top - 4} ${right} ${top + 6}V${base}Z`,
+        `M${left} ${base}V${top + 8}L${(bx + bw * .25).toFixed(1)} ${top}H${(bx + bw * .75).toFixed(1)}L${right} ${top + 8}V${base}Z`,
+        `M${left} ${base}V${top}H${right}V${base}Z`,
+      ][type];
+    } else if (tier === "highrise") {
+      dPath = [
+        `M${left} ${base}V${top + 15}H${(bx + bw * .17).toFixed(1)}V${top + 5}H${(bx + bw * .32).toFixed(1)}V${top}H${(bx + bw * .72).toFixed(1)}V${top + 7}H${right}V${base}Z`,
+        `M${left} ${base}V${top + 13}L${(bx + bw * .18).toFixed(1)} ${top + 4}L${center} ${top}L${(bx + bw * .82).toFixed(1)} ${top + 7}V${base}Z`,
+        `M${left} ${base}V${top + 10}H${(bx + bw * .28).toFixed(1)}V${top}H${(bx + bw * .7).toFixed(1)}V${top + 10}H${right}V${base}Z`,
+        `M${left} ${base}V${top + 8}Q${center} ${top - 7} ${right} ${top + 8}V${base}Z`,
+        `M${left} ${base}V${top + 12}H${(bx + bw * .2).toFixed(1)}V${top + 3}H${(bx + bw * .8).toFixed(1)}V${top + 12}H${right}V${base}Z`,
+      ][type];
+      ornament = `<path d="M${center} ${top - 7}v7" stroke="#fff3c4" stroke-opacity=".72"/>`;
+    } else {
+      dPath = [
+        `M${left} ${base}V${top + 24}L${(bx + bw * .18).toFixed(1)} ${top + 10}L${(bx + bw * .4).toFixed(1)} ${top}H${(bx + bw * .62).toFixed(1)}L${(bx + bw * .84).toFixed(1)} ${top + 13}V${base}Z`,
+        `M${left} ${base}V${top + 28}L${(bx + bw * .22).toFixed(1)} ${top + 12}L${center} ${top}L${(bx + bw * .78).toFixed(1)} ${top + 18}V${base}Z`,
+        `M${left} ${base}V${top + 20}Q${(bx + bw * .22).toFixed(1)} ${top + 2} ${center} ${top}Q${(bx + bw * .8).toFixed(1)} ${top + 3} ${right} ${top + 22}V${base}Z`,
+        `M${left} ${base}V${top + 26}H${(bx + bw * .24).toFixed(1)}V${top + 8}H${(bx + bw * .4).toFixed(1)}V${top}H${(bx + bw * .62).toFixed(1)}V${top + 11}H${(bx + bw * .82).toFixed(1)}V${top + 26}H${right}V${base}Z`,
+        `M${left} ${base}V${top + 24}L${(bx + bw * .3).toFixed(1)} ${top + 5}L${center} ${top}L${(bx + bw * .7).toFixed(1)} ${top + 5}V${base}Z`,
+      ][type];
+      ornament = `<path d="M${center} ${top - 13}v13" stroke="#fff3c4" stroke-opacity=".8" stroke-width="1.2"/>`;
+    }
+    const windowRows = tier === "house" ? 1 : Math.max(1, Math.floor((bh - 16) / 9));
+    const windows = bw >= 7 ? Array.from({ length: windowRows }, (_, row) => `<rect x="${(bx + bw * .34).toFixed(1)}" y="${(top + Math.min(13, bh * .42) + row * 9).toFixed(1)}" width="${Math.max(1, bw * .18).toFixed(1)}" height="2" rx=".5" fill="#fff3c4" fill-opacity="${row % 2 ? ".46" : ".82"}"/>`).join("") : "";
+    return `<g class="skyline-${tier}"><title>${d.date}: ${formatTokens(d.total)} (${tier})</title><path class="by skyline-building skyline-${tier}-${type}" style="${delay(i, 0.025, speed)}" d="${dPath}" fill="${fill}"/>${ornament}${windows}</g>`;
   }).join("");
   const svg = `<defs><linearGradient id="skylineSky" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#1b1b4b"/><stop offset=".58" stop-color="#4d3677"/><stop offset="1" stop-color="#ec7f65"/></linearGradient><radialGradient id="skylineMoon"><stop stop-color="#fff9d4"/><stop offset="1" stop-color="#ffd88a"/></radialGradient></defs><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="url(#skylineSky)"/>${stars}<circle class="f" style="${delay(2, 0.12, speed)}" cx="${x + w - 27}" cy="${y + 23}" r="10" fill="url(#skylineMoon)"/>${buildings}<path d="M${x} ${y + h + .5}H${x + w}" stroke="#ffd6a1" stroke-opacity=".72"/>`;
   const extraCss = anim ? `.sky-star{opacity:0;animation:twinkle ${(1.8 / speed).toFixed(2)}s ease-in-out infinite}@keyframes twinkle{50%{opacity:.3;transform:scale(.55)}}` : "";

@@ -85,6 +85,8 @@ the raw SVG's intrinsic size needs adjusting.
 
 For compact summary trends, choose `--chart bars` for immediate comparison, `--chart line` for a smoother
 trend, `--chart grass` for a GitHub-style long-term contribution view, or `--chart skyline` for a warm animated city silhouette. Skyline keeps token volume as building height while varying roofs, setbacks, domes, and spires deterministically. Use `--days` to match the story:
+
+Skyline reads like an activity landscape: no activity becomes a small field, light activity becomes homes, then mid-rise and high-rise buildings; only the busiest relative days become distinctive landmark towers. The same history always produces the same city.
 `7` for a weekly update, `30` for a monthly profile, and the grass default (17 weeks) for consistency.
 
 All cards are SVGs. `--scale 0.75`, `--scale 1`, and `--scale 1.25` change intrinsic output dimensions
