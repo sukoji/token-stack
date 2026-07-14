@@ -10,56 +10,56 @@
 
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}}
 </style>
-<rect x="0.5" y="0.5" width="494" height="249" rx="8" fill="#0d1117" stroke="#3d444d"/>
+<rect x="0.5" y="0.5" width="494" height="249" rx="8" fill="#1a1b27" stroke="#3b4261"/>
 
 <defs><linearGradient id="big" x1="0" y1="0" x2="1" y2="0">
-<stop offset="0%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#bc8cff"/>
+<stop offset="0%" stop-color="#70a5fd"/><stop offset="100%" stop-color="#bb9af7"/>
 </linearGradient></defs>
 <g font-family="'Segoe UI',Ubuntu,Sans-Serif">
-<text class="f" x="25" y="33" font-size="16" font-weight="600" fill="#58a6ff">⚡ Token Stack · Claude Code</text>
-<text class="f" style="animation-delay:0.12s" x="25" y="76" font-size="34" font-weight="800" fill="url(#big)">3.40B</text>
-<text class="f" style="animation-delay:0.24s" x="25" y="97" font-size="12" fill="#9ea7b3">tokens all time · est. $2,497.91</text>
-<text class="f" style="animation-delay:0.24s" x="255" y="97" font-size="10" text-anchor="end" fill="#9ea7b3">relative log scale</text>
+<text class="f" x="25" y="33" font-size="16" font-weight="600" fill="#70a5fd">⚡ Token Stack · Claude Code</text>
+<text class="f" style="animation-delay:0.12s" x="25" y="76" font-size="34" font-weight="800" fill="url(#big)">3.93B</text>
+<text class="f" style="animation-delay:0.24s" x="25" y="97" font-size="12" fill="#9aa5ce">tokens all time · est. $2,914.05</text>
+<text class="f" style="animation-delay:0.24s" x="255" y="97" font-size="10" text-anchor="end" fill="#9aa5ce">relative log scale</text>
 <g class="f" style="animation-delay:0.36s">
-<text x="25" y="133" font-size="11" fill="#e6edf3">Input</text>
-<rect x="92" y="125" width="108" height="6" rx="3" fill="#21262d"/>
-<rect class="bx" style="animation-delay:0.36s" x="92" y="125" width="70" height="6" rx="3" fill="#58a6ff"/>
-<text x="255" y="133" font-size="11" font-weight="600" fill="#e6edf3" text-anchor="end">1.6M</text>
+<text x="25" y="133" font-size="11" fill="#c0caf5">Input</text>
+<rect x="92" y="125" width="108" height="6" rx="3" fill="#24283b"/>
+<rect class="bx" style="animation-delay:0.36s" x="92" y="125" width="71" height="6" rx="3" fill="#7aa2f7"/>
+<text x="255" y="133" font-size="11" font-weight="600" fill="#c0caf5" text-anchor="end">1.8M</text>
 </g>
 <g class="f" style="animation-delay:0.48s">
-<text x="25" y="158" font-size="11" fill="#e6edf3">Output</text>
-<rect x="92" y="150" width="108" height="6" rx="3" fill="#21262d"/>
-<rect class="bx" style="animation-delay:0.48s" x="92" y="150" width="80" height="6" rx="3" fill="#3fb950"/>
-<text x="255" y="158" font-size="11" font-weight="600" fill="#e6edf3" text-anchor="end">10.5M</text>
+<text x="25" y="158" font-size="11" fill="#c0caf5">Output</text>
+<rect x="92" y="150" width="108" height="6" rx="3" fill="#24283b"/>
+<rect class="bx" style="animation-delay:0.48s" x="92" y="150" width="80" height="6" rx="3" fill="#9ece6a"/>
+<text x="255" y="158" font-size="11" font-weight="600" fill="#c0caf5" text-anchor="end">11.8M</text>
 </g>
 <g class="f" style="animation-delay:0.60s">
-<text x="25" y="183" font-size="11" fill="#e6edf3">Cache read</text>
-<rect x="92" y="175" width="108" height="6" rx="3" fill="#21262d"/>
-<rect class="bx" style="animation-delay:0.60s" x="92" y="175" width="108" height="6" rx="3" fill="#d29922"/>
-<text x="255" y="183" font-size="11" font-weight="600" fill="#e6edf3" text-anchor="end">3.30B</text>
+<text x="25" y="183" font-size="11" fill="#c0caf5">Cache read</text>
+<rect x="92" y="175" width="108" height="6" rx="3" fill="#24283b"/>
+<rect class="bx" style="animation-delay:0.60s" x="92" y="175" width="108" height="6" rx="3" fill="#e0af68"/>
+<text x="255" y="183" font-size="11" font-weight="600" fill="#c0caf5" text-anchor="end">3.81B</text>
 </g>
 <g class="f" style="animation-delay:0.72s">
-<text x="25" y="208" font-size="11" fill="#e6edf3">Cache write</text>
-<rect x="92" y="200" width="108" height="6" rx="3" fill="#21262d"/>
-<rect class="bx" style="animation-delay:0.72s" x="92" y="200" width="90" height="6" rx="3" fill="#f85149"/>
-<text x="255" y="208" font-size="11" font-weight="600" fill="#e6edf3" text-anchor="end">88.6M</text>
+<text x="25" y="208" font-size="11" fill="#c0caf5">Cache write</text>
+<rect x="92" y="200" width="108" height="6" rx="3" fill="#24283b"/>
+<rect class="bx" style="animation-delay:0.72s" x="92" y="200" width="90" height="6" rx="3" fill="#f7768e"/>
+<text x="255" y="208" font-size="11" font-weight="600" fill="#c0caf5" text-anchor="end">103.3M</text>
 </g>
-<text class="f" style="animation-delay:0.36s" x="285" y="112" font-size="11" fill="#9ea7b3">last 14 days · 693.3M</text>
-<rect class="by" style="animation-delay:0.20s" x="285.0" y="193" width="10.2" height="12" rx="2" fill="#58a6ff"/>
-<rect class="by" style="animation-delay:0.25s" x="298.2" y="147" width="10.2" height="58" rx="2" fill="#58a6ff"/>
-<rect class="by" style="animation-delay:0.30s" x="311.4" y="153" width="10.2" height="52" rx="2" fill="#58a6ff"/>
-<rect class="by" style="animation-delay:0.35s" x="324.6" y="155" width="10.2" height="50" rx="2" fill="#58a6ff"/>
-<rect class="by" style="animation-delay:0.40s" x="337.9" y="203" width="10.2" height="2" rx="2" fill="#58a6ff"/>
-<rect class="by" style="animation-delay:0.45s" x="351.1" y="203" width="10.2" height="2" rx="2" fill="#58a6ff"/>
-<rect class="by" style="animation-delay:0.50s" x="364.3" y="203" width="10.2" height="2" rx="2" fill="#58a6ff"/>
-<rect class="by" style="animation-delay:0.55s" x="377.5" y="201" width="10.2" height="4" rx="2" fill="#58a6ff"/>
-<rect class="by" style="animation-delay:0.60s" x="390.7" y="141" width="10.2" height="64" rx="2" fill="#58a6ff"/>
-<rect class="by" style="animation-delay:0.65s" x="403.9" y="175" width="10.2" height="30" rx="2" fill="#58a6ff"/>
-<rect class="by" style="animation-delay:0.70s" x="417.1" y="123" width="10.2" height="82" rx="2" fill="#58a6ff"/>
-<rect class="by" style="animation-delay:0.75s" x="430.4" y="203" width="10.2" height="2" rx="2" fill="#58a6ff"/>
-<rect class="by" style="animation-delay:0.80s" x="443.6" y="190" width="10.2" height="15" rx="2" fill="#58a6ff"/>
-<rect class="by" style="animation-delay:0.85s" x="456.8" y="180" width="10.2" height="25" rx="2" fill="#bc8cff"/>
-<line x1="285" y1="206" x2="470" y2="206" stroke="#3d444d"/>
-<text class="f" style="animation-delay:0.96s" x="25" y="232" font-size="11" fill="#9ea7b3">🔥 7 day streak · 41 active days · opus-4.8</text>
+<text class="f" style="animation-delay:0.36s" x="285" y="112" font-size="11" fill="#9aa5ce">last 14 days · 609.5M</text>
+<rect class="by" style="animation-delay:0.20s" x="285.0" y="153" width="10.2" height="52" rx="2" fill="#7aa2f7"/>
+<rect class="by" style="animation-delay:0.25s" x="298.2" y="155" width="10.2" height="50" rx="2" fill="#7aa2f7"/>
+<rect class="by" style="animation-delay:0.30s" x="311.4" y="203" width="10.2" height="2" rx="2" fill="#7aa2f7"/>
+<rect class="by" style="animation-delay:0.35s" x="324.6" y="203" width="10.2" height="2" rx="2" fill="#7aa2f7"/>
+<rect class="by" style="animation-delay:0.40s" x="337.9" y="203" width="10.2" height="2" rx="2" fill="#7aa2f7"/>
+<rect class="by" style="animation-delay:0.45s" x="351.1" y="201" width="10.2" height="4" rx="2" fill="#7aa2f7"/>
+<rect class="by" style="animation-delay:0.50s" x="364.3" y="141" width="10.2" height="64" rx="2" fill="#7aa2f7"/>
+<rect class="by" style="animation-delay:0.55s" x="377.5" y="175" width="10.2" height="30" rx="2" fill="#7aa2f7"/>
+<rect class="by" style="animation-delay:0.60s" x="390.7" y="123" width="10.2" height="82" rx="2" fill="#7aa2f7"/>
+<rect class="by" style="animation-delay:0.65s" x="403.9" y="203" width="10.2" height="2" rx="2" fill="#7aa2f7"/>
+<rect class="by" style="animation-delay:0.70s" x="417.1" y="190" width="10.2" height="15" rx="2" fill="#7aa2f7"/>
+<rect class="by" style="animation-delay:0.75s" x="430.4" y="177" width="10.2" height="28" rx="2" fill="#7aa2f7"/>
+<rect class="by" style="animation-delay:0.80s" x="443.6" y="187" width="10.2" height="18" rx="2" fill="#7aa2f7"/>
+<rect class="by" style="animation-delay:0.85s" x="456.8" y="203" width="10.2" height="2" rx="2" fill="#bb9af7"/>
+<line x1="285" y1="206" x2="470" y2="206" stroke="#3b4261"/>
+<text class="f" style="animation-delay:0.96s" x="25" y="232" font-size="11" fill="#9aa5ce">🔥 9 day streak · 46 active days · opus-4.8</text>
 </g>
 </svg>

@@ -4,7 +4,7 @@ import path from "node:path";
 import {
   collectEntries, collectCodexSessions, collectAntigravitySessions,
   toDayRecords, loadHistory, mergeHistory, saveHistory,
-  aggregate, defaultSourceDir, defaultHistoryFile, defaultCodexSourceDir, defaultAntigravitySourceDir,
+  aggregate, filterHistoryByProvider, currentTimeZone, defaultSourceDir, defaultHistoryFile, defaultCodexSourceDir, defaultAntigravitySourceDir,
 } from "../src/collect.js";
 import { CARDS, formatTokens, formatCost } from "../src/render.js";
 import { THEMES } from "../src/themes.js";
@@ -86,7 +86,7 @@ function parseArgs(argv) {
     switch (a) {
       case "--card": opts.card = args.shift(); break;
       case "--theme": opts.theme = args.shift(); break;
-      case "--days": opts.days = Math.max(1, parseInt(args.shift(), 10) || 30); opts.daysSet = true; break;
+      case "--days": opts.days = Math.min(3650, Math.max(1, parseInt(args.shift(), 10) || 30)); opts.daysSet = true; break;
       case "--speed": opts.speed = Math.max(0.1, parseFloat(args.shift()) || 1); break;
       case "--scale": opts.scale = Math.max(0.25, Math.min(3, parseFloat(args.shift()) || 1)); break;
       case "--no-anim": opts.anim = false; break;
@@ -192,15 +192,31 @@ try {
     entries = entries.concat(collectEntries(source, { agent }));
   }
 } catch (err) { console.error(err.message); process.exit(1); }
-const history = opts.history ? loadHistory(opts.historyFile) : { version: 1, days: {} };
-mergeHistory(history, toDayRecords(entries));
-if (Object.keys(history.days).length === 0) {
-  console.error(`No usage data found in ${opts.source}`);
-  console.error("Is Claude Code installed and has it been used on this machine?");
+let history;
+try {
+  history = opts.history ? loadHistory(opts.historyFile) : { version: 1, days: {} };
+  history.timezone ??= currentTimeZone();
+} catch (err) {
+  console.error(err.message);
   process.exit(1);
 }
-if (opts.history) saveHistory(history, opts.historyFile);
-const stats = publicStats(aggregate(history, { days: opts.days }), opts.privacy);
+mergeHistory(history, toDayRecords(entries, { timeZone: history.timezone }));
+let viewHistory = filterHistoryByProvider(history, opts.provider);
+if (Object.keys(viewHistory.days).length === 0) {
+  const source = opts.provider === "codex" ? opts.codexSource : opts.provider === "antigravity" ? opts.antigravitySource : opts.source;
+  const label = opts.provider === "auto" ? "supported AI coding" : opts.provider === "claude" ? "Claude Code" : opts.provider === "codex" ? "Codex" : "Antigravity";
+  console.error(`No ${label} activity found in ${source}`);
+  console.error("Use the matching --source option if your local session directory is elsewhere.");
+  process.exit(1);
+}
+if (opts.history) {
+  try {
+    history = saveHistory(history, opts.historyFile);
+    viewHistory = filterHistoryByProvider(history, opts.provider);
+  }
+  catch (err) { console.error(err.message); process.exit(1); }
+}
+const stats = publicStats(aggregate(viewHistory, { days: opts.days }), opts.privacy);
 
 switch (opts.command) {
   case "generate": {
@@ -225,7 +241,7 @@ switch (opts.command) {
       console.log(`![token-stack](${raw})`);
     }
     if (!opts.gist) {
-      console.log(`\nNext time, update in place with:\n  npx github:sukoji/token-stack sync --gist ${res.gistId}`);
+      console.log(`\nNext time, update in place with:\n  npx @sukojin/token-stack sync --gist ${res.gistId}`);
     }
     break;
   }

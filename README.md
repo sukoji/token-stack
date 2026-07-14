@@ -4,6 +4,7 @@
 
 [![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](./LICENSE)
 [![node](https://img.shields.io/badge/node-%E2%89%A518-3fb950?style=flat-square)](https://nodejs.org)
+[![test](https://github.com/sukoji/token-stack/actions/workflows/test.yml/badge.svg)](https://github.com/sukoji/token-stack/actions/workflows/test.yml)
 [![zero dependencies](https://img.shields.io/badge/dependencies-0-8b949e?style=flat-square)](./package.json)
 [![npm](https://img.shields.io/npm/v/@sukojin/token-stack?style=flat-square)](https://www.npmjs.com/package/@sukojin/token-stack)
 
@@ -103,6 +104,8 @@ larger than input/output; log scale keeps every category visible while the label
 
 The `agents` card is deliberately **session-based**, not token-based. Claude exposes billed token fields while Codex and Antigravity logs do not expose comparable totals. Counting unique local sessions gives every supported agent a fair, explainable activity share without inventing token data.
 
+The `summary`, `activity`, and `models` cards remain token-based. Today that means their token totals and Skyline come from Claude Code telemetry; Codex and Antigravity contribute to the `agents` card but not to token totals. A Codex-only or Antigravity-only token card therefore shows zero tokens instead of estimating usage. Use the `agents` card when you want a cross-provider view.
+
 `--provider auto` (the default) safely detects these local sources:
 
 | Agent | Default source | Basis |
@@ -122,7 +125,27 @@ npx @sukojin/token-stack generate --card agents --antigravity-source /path/to/br
 
 ## Provider verification
 
-Every supported provider adapter has fixture-backed tests for its session metadata and timestamp shape, plus tests for malformed input, duplicate session handling, and legacy history migration. The parser only records fields needed for local aggregation; it never stores transcript text. When a provider changes a private format, the adapter should fail closed (omit unrecognized sessions) until a new fixture and regression test are added.
+The compatibility suite exercises the documented session metadata and timestamp shapes for Claude Code, Codex, and Antigravity without storing transcript text. It covers provider-only and mixed histories, duplicate and malformed records, invalid token values, legacy and partially migrated histories, Unicode paths, concurrent writers, stale locks, transient Windows file locks, corrupt-history preservation, and Gist create/update failures.
+
+Skyline has a deterministic matrix of 11 usage profiles—from an empty first run and a 17K-token first week through spikes, plateaus, 90-day heavy use, 365-day compression, and `Number.MAX_SAFE_INTEGER`. Every profile is rendered in four sky phases and both full and compact layouts: 88 SVGs checked for finite geometry, bounded building sizes, resolved clips and IDs, safe escaped text, local-only content, deterministic output, and token-scale semantics.
+
+CI runs the test, packed-install, and CLI smoke suites on:
+
+- Ubuntu with Node.js 18, 20, 22, and 24, including UTC, Asia/Seoul, and Pacific/Honolulu day boundaries
+- Windows with Node.js 20 and 24
+- macOS with Node.js 20 and 24
+- A temporary install path containing spaces and Unicode characters
+
+Run the same layers locally:
+
+```bash
+npm test
+npm run verify:skyline
+npm run verify:pack
+npm pack --dry-run
+```
+
+These checks verify the known formats and failure modes; they cannot guarantee that a provider will never change its local, non-public log schema. Malformed fields are ignored, and a schema change may omit sessions until a new regression case is added.
 
 ## Commands
 
@@ -144,7 +167,7 @@ Every supported provider adapter has fixture-backed tests for its session metada
 | `--sky` | `auto` | Skyline atmosphere: follows local time, or `dawn`, `day`, `dusk`, `night` |
 | `--breakdown` | `log` | Summary comparison: `log` (readable) or `raw` (proportional tokens) |
 | `--theme` | `dark` | `dark`, `light`, `dracula`, or `tokyonight` |
-| `--days` | `30` | Activity-chart window |
+| `--days` | `30` | Activity-chart window, from 1 to 3650 days |
 | `--scale` | `1` | Intrinsic SVG scale from `0.25` to `3`, preserving ratio |
 | `--no-anim` | | Render static cards |
 | `--name` | `LOCAL OPERATOR` | Passport display name |
@@ -171,7 +194,9 @@ It prints a Claude Code `SessionEnd` hook that runs `token-stack sync`. Review a
 
 ## History and costs
 
-Claude Code may delete old transcripts. token-stack stores a small per-day snapshot at `~/.token-stack/history.json` so all-time values continue growing. It contains aggregate token counts, not messages. Writes are atomic.
+Claude Code may delete old transcripts. token-stack stores a small per-day snapshot at `~/.token-stack/history.json` so all-time values continue growing. It contains aggregate token/model/project labels and session IDs, never messages or transcript text. `--privacy private` removes project names from JSON output; it does not rewrite this local history file. Writes are atomic, serialized across simultaneous token-stack processes, and merged so a hook and a scheduled sync cannot silently overwrite each other.
+
+The first run records the machine's IANA timezone in history and keeps using it for day boundaries, streaks, and chart windows. Existing history without this field adopts the machine timezone once on upgrade. This prevents travel, CI, or a server move from counting the same transcript under a second date. Skyline's `--sky auto` atmosphere still follows the machine's current clock; it does not change the saved aggregation timezone.
 
 Costs are API-price estimates, not subscription charges. If you use Pro or Max, treat them as a comparable usage metric rather than an invoice.
 
@@ -179,6 +204,8 @@ Costs are API-price estimates, not subscription charges. If you use Pro or Max, 
 
 ```bash
 npm test
+npm run verify:skyline
+npm run verify:pack
 npm pack --dry-run
 ```
 
@@ -188,7 +215,7 @@ Push a `v*` tag to publish a release. The workflow runs tests and publishes `@su
 
 - Node.js 18+
 - [GitHub CLI](https://cli.github.com) with `gh auth login` for `sync`
-- Claude Code local sessions for the built-in source
+- Local sessions from at least one supported provider
 
 ## License
 

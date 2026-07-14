@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.16
+
+- Add an 88-render Skyline verification matrix covering empty, sparse, bursty, sustained, heavy, long, and extreme histories in every sky phase and layout.
+- Test packed installs from Unicode paths across the supported Node.js range on Ubuntu, Windows, and macOS.
+- Isolate provider-only views and preserve Claude Code, Codex, and Antigravity session unions through rescans and legacy migrations.
+- Serialize concurrent history writers, merge stale snapshots, retry transient Windows replacements, and preserve malformed history for recovery.
+- Pin history day boundaries to the first recorded IANA timezone so travel or server moves cannot duplicate recent usage.
+- Bound low-volume and short-history Skyline geometry, escape SVG metadata safely, and keep gallery previews isolated.
+- Test Gist creation, updates, fallback file adds, failure cleanup, and correct npm follow-up commands.
+
 ## 0.4.0
 
 - Add an opt-in Agent Passport share card with activity-derived archetypes.

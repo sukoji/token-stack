@@ -17,6 +17,8 @@ jobs:
           node-version: 20
           registry-url: https://registry.npmjs.org
       - run: npm test
+      - run: npm run verify:pack
+      - run: npm pack --dry-run
       - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

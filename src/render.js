@@ -15,6 +15,19 @@ export function formatCost(n) {
 const esc = (s) =>
   String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+const escAttr = (s) =>
+  esc(s).replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+
+function safeDays(days) {
+  const source = Array.isArray(days) ? days : [];
+  if (!source.length) return [{ date: "", total: 0, cost: 0 }];
+  return source.map((day) => ({
+    date: String(day?.date ?? ""),
+    total: Number.isFinite(day?.total) && day.total > 0 ? day.total : 0,
+    cost: Number.isFinite(day?.cost) && day.cost > 0 ? day.cost : 0,
+  }));
+}
+
 function shortModel(id) {
   return id
     .replace(/^claude-/, "")
@@ -42,7 +55,7 @@ ${extra}
 const delay = (i, step, speed) => `animation-delay:${((i * step) / speed).toFixed(2)}s`;
 
 function frame(w, h, t, title, body, style, scale = 1) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(w * scale)}" height="${Math.round(h * scale)}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(title)}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(w * scale)}" height="${Math.round(h * scale)}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${escAttr(title)}">
 <title>${esc(title)}</title>
 ${style}
 <rect x="0.5" y="0.5" width="${w - 1}" height="${h - 1}" rx="8" fill="${t.bg}" stroke="${t.border}"/>
@@ -113,7 +126,7 @@ function chartGrass(days, t, box, { anim, speed }) {
       const cy = y + (slot % 7) * step;
       const op = d.total === 0 ? 0 : d.total <= q1 ? 0.3 : d.total <= q2 ? 0.55 : d.total <= q3 ? 0.8 : 1;
       const fill = op === 0 ? `fill="${t.track}"` : `fill="${t.bars[0]}" fill-opacity="${op}"`;
-      return `<rect class="f" style="${delay(i, 0.012, speed)}" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" width="${cell}" height="${cell}" rx="2.5" ${fill}><title>${d.date}: ${formatTokens(d.total)}</title></rect>`;
+      return `<rect class="f" style="${delay(i, 0.012, speed)}" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" width="${cell}" height="${cell}" rx="2.5" ${fill}><title>${esc(d.date)}: ${formatTokens(d.total)}</title></rect>`;
     })
     .join("\n");
   return { svg, extraCss: "" };
@@ -235,6 +248,9 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now }
   const totals = days.map((day) => day.total);
   const logTotals = totals.map((total) => total > 0 ? Math.log1p(total) : 0);
   const positiveLogs = logTotals.filter(Boolean).sort((a, b) => a - b);
+  const maxDailyTotal = Math.max(...totals, 0);
+  const villageScale = maxDailyTotal <= 25_000;
+  const landmarkEligible = maxDailyTotal >= 500_000;
   const logLow = skylineQuantile(logTotals, .15);
   const logMedian = skylineQuantile(logTotals, .5);
   const logHigh = skylineQuantile(logTotals, .9);
@@ -285,7 +301,7 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now }
   const base = y + h - (waterDepth || (detail ? 7 : 5));
   const lots = clamp(
     Math.round(days.length * (detail ? .9 : 1.2)),
-    Math.min(detail ? 12 : 18, days.length * 2),
+    detail ? 12 : 18,
     detail ? 42 : 30,
   );
   const lotWidth = w / lots;
@@ -350,7 +366,7 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now }
     } else if (width >= 3.5) {
       windows = `<path d="M${(left + width * .5).toFixed(1)} ${top + 4}V${base - 3}" stroke="${phase.window}" stroke-opacity=".35" stroke-width=".7"/>`;
     }
-    foreground.push(`<g class="skyline-${tier}" data-height="${height.toFixed(1)}" data-width="${width.toFixed(1)}" data-score="${score.toFixed(3)}" data-density="${density.toFixed(3)}"><title>${label}</title><path class="by skyline-building skyline-${tier}-${shape % 5}" style="${delay(delayIndex, .025, speed)}" d="${path}" fill="${color}" fill-opacity="${opacity}"/><g clip-path="url(#${clipId})">${face}${facadeLines}${crownBand}${windows}</g></g>`);
+    foreground.push(`<g class="skyline-${tier}" data-height="${height.toFixed(1)}" data-width="${width.toFixed(1)}" data-score="${score.toFixed(3)}" data-density="${density.toFixed(3)}"><title>${esc(label)}</title><path class="by skyline-building skyline-${tier}-${shape % 5}" style="${delay(delayIndex, .025, speed)}" d="${path}" fill="${color}" fill-opacity="${opacity}"/><g clip-path="url(#${clipId})">${face}${facadeLines}${crownBand}${windows}</g></g>`);
     if (waterDepth && tier !== "house" && density > .04) {
       const reflectionHeight = Math.min(waterDepth - 3, Math.max(2, height * (tier === "landmark" ? .18 : tier === "highrise" ? .13 : .09)));
       const segments = tier === "landmark" || tier === "highrise" ? 3 : 2;
@@ -388,20 +404,21 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now }
     const density = skylineSample(densityScore, position);
     const heightValue = skylineSample(heightScore, position);
     const dayIndex = clamp(Math.round(position), 0, days.length - 1);
-    const width = lotWidth * (.88 + skylineHash(i * 13 + dayIndex * 31) * .32) + .55;
+    const width = Math.min(detail ? 50 : 32, lotWidth * (.88 + skylineHash(i * 13 + dayIndex * 31) * .32) + .55);
     const left = x + i * lotWidth - (width - lotWidth) * .38 - .3;
     const shape = Math.floor(skylineHash(i * 17 + dayIndex * 5) * 5);
     const idle = density < .075 && totals[dayIndex] === 0;
     if (idle) {
       const treeHeight = 4 + skylineHash(i + 91) * 6;
-      foreground.push(`<g class="skyline-field"><path d="M${left.toFixed(1)} ${base}V${(base - 3).toFixed(1)}q${(width / 2).toFixed(1)} -2 ${width.toFixed(1)} 0V${base}Z" fill="${phase.field}"/><circle cx="${(left + width * .5).toFixed(1)}" cy="${(base - treeHeight).toFixed(1)}" r="${Math.max(1.3, width * .18).toFixed(1)}" fill="${phase.grass}" fill-opacity=".9"/><path d="M${(left + width * .5).toFixed(1)} ${base - 2}v${-(treeHeight - 2)}" stroke="#384c38" stroke-width=".8"/></g>`);
+      const treeRadius = Math.min(detail ? 5.5 : 3.5, Math.max(1.3, width * .18));
+      foreground.push(`<g class="skyline-field"><path d="M${left.toFixed(1)} ${base}V${(base - 3).toFixed(1)}q${(width / 2).toFixed(1)} -2 ${width.toFixed(1)} 0V${base}Z" fill="${phase.field}"/><circle cx="${(left + width * .5).toFixed(1)}" cy="${(base - treeHeight).toFixed(1)}" r="${treeRadius.toFixed(1)}" fill="${phase.grass}" fill-opacity=".9"/><path d="M${(left + width * .5).toFixed(1)} ${base - 2}v${-(treeHeight - 2)}" stroke="#384c38" stroke-width=".8"/></g>`);
       continue;
     }
-    const supportsHighrise = heightValue > .56 && density > .48 && (localPeakScore[dayIndex] > .25 || skylineHash(i * 47 + dayIndex * 19) > .78);
+    const supportsHighrise = !villageScale && heightValue > .56 && density > .48 && (localPeakScore[dayIndex] > .25 || skylineHash(i * 47 + dayIndex * 19) > .78);
     // Relative lows in a billion-token profile are still part of a downtown;
     // reserve detached homes for genuinely smaller overall activity scales.
     const houseThreshold = .16 * (1 - cityScale);
-    const tier = heightValue < houseThreshold ? "house" : supportsHighrise ? "highrise" : "midrise";
+    const tier = villageScale ? "house" : heightValue < houseThreshold ? "house" : supportsHighrise ? "highrise" : "midrise";
     const computedHeight = tier === "house"
       ? 7 + cityScale * 4 + heightValue * 11
       : tier === "highrise"
@@ -446,7 +463,7 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now }
       raw[clamp(end + 3, 0, raw.length - 1)],
     );
     const prominence = value - nearby;
-    if (value > .5 && value > previous + .005 && value > next + .005 && prominence > .075) {
+    if (landmarkEligible && value > .5 && value > previous + .005 && value > next + .005 && prominence > .075) {
       candidatePeaks.push({ value, index, prominence });
     }
     start = end + 1;
@@ -460,12 +477,12 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now }
   const rawMax = Math.max(...raw, 0);
   const rawMin = Math.min(...raw, rawMax);
   const rawRange = rawMax - rawMin;
-  if (!peaks.length && rawRange > .35 && rawMax > .55) {
+  if (landmarkEligible && !peaks.length && rawRange > .35 && rawMax > .55) {
     const value = rawMax;
     peaks.push({ index: raw.indexOf(value), value, prominence: value });
   }
   const citySignature = days.reduce((signature, day, index) => {
-    const numericDate = Number(day.date?.replaceAll("-", "")) || index;
+    const numericDate = Number(String(day.date ?? "").replaceAll("-", "")) || index;
     const magnitude = Math.round(Math.log1p(day.total) * 100);
     return (Math.imul(signature ^ numericDate, 33) ^ magnitude) >>> 0;
   }, 0x811c9dc5);
@@ -478,10 +495,11 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now }
     // Keep the skyline's focal towers visibly slender. Their podiums still
     // anchor them to the street, while the shafts read as needles and fins
     // instead of enlarged daily bars.
-    const width = Math.max(detail ? 12 : 8.5, baseWidth * [.56, .62, .58, .6, .64][shape]);
+    const height = clamp(h * (.39 + cityScale * .16 + heightScore[index] * .24 + prominence * .25), detail ? 46 : 28, h * .78);
+    const desiredWidth = Math.max(detail ? 12 : 8.5, baseWidth * [.56, .62, .58, .6, .64][shape]);
+    const width = Math.min(desiredWidth, height / (detail ? 4 : 3));
     const centerX = x + (index + .5) * dayWidth;
     const left = clamp(centerX - width / 2, x, x + w - width);
-    const height = clamp(h * (.39 + cityScale * .16 + heightScore[index] * .24 + prominence * .25), detail ? 46 : 28, h * .78);
     const podiumWidth = Math.max(width, Math.min(width * 1.45, dayWidth * 3.5));
     foreground.push(`<rect class="skyline-podium" x="${(left - (podiumWidth - width) / 2).toFixed(1)}" y="${(base - 10).toFixed(1)}" width="${podiumWidth.toFixed(1)}" height="10" fill="${phase.palette.midrise[(shape + 2) % phase.palette.midrise.length]}" fill-opacity=".94"/>`);
     addBuilding({
@@ -537,7 +555,8 @@ export function renderSummaryCompact(stats, opts = {}) {
   const t = resolveTheme(opts.theme);
   const W = 340, H = 200;
   const { totals } = stats;
-  const days = stats.byDay;
+  const sourceDays = Array.isArray(stats.byDay) ? stats.byDay : [];
+  const days = safeDays(sourceDays);
 
   const drawChart = CHARTS[chart];
   if (!drawChart) throw new Error(`Unknown chart "${chart}". Available: ${Object.keys(CHARTS).join(", ")}`);
@@ -553,7 +572,7 @@ export function renderSummaryCompact(stats, opts = {}) {
 <text class="f" x="20" y="27" font-size="14" font-weight="600" fill="${t.title}">⚡ ${esc(title)}</text>
 <text class="f" style="${delay(1, 0.12, speed)}" x="20" y="66" font-size="30" font-weight="800" fill="url(#big)">${formatTokens(totals.total)}</text>
 <text class="f" style="${delay(2, 0.12, speed)}" x="20" y="85" font-size="10.5" fill="${t.subtext}">tokens all time · est. ${formatCost(totals.cost)} · 🔥 ${stats.streak}d streak</text>
-<text class="f" style="${delay(3, 0.12, speed)}" x="${W - 20}" y="97" font-size="9.5" text-anchor="end" fill="${t.subtext}">last ${days.length}d · ${formatTokens(windowTotal)}</text>
+<text class="f" style="${delay(3, 0.12, speed)}" x="${W - 20}" y="97" font-size="9.5" text-anchor="end" fill="${t.subtext}">last ${sourceDays.length}d · ${formatTokens(windowTotal)}</text>
 ${chartSvg}
 <text class="f" style="${delay(8, 0.12, speed)}" x="20" y="${H - 10}" font-size="9.5" fill="${t.subtext}">in ${formatTokens(totals.input)} · out ${formatTokens(totals.output)} · cache ${formatTokens(totals.cacheRead + totals.cacheWrite)}</text>
 </g>`;
@@ -591,7 +610,7 @@ export function renderSummary(stats, opts = {}) {
     .join("\n");
 
   // 14-day sparkline
-  const days = stats.byDay.slice(-14);
+  const days = safeDays(stats.byDay).slice(-14);
   const maxDay = Math.max(...days.map((d) => d.total), 1);
   const chartX = 285, chartW = 185, baseY = 205, chartH = 82;
   const bw = chartW / days.length - 3;
@@ -628,7 +647,8 @@ ${spark}
 export function renderActivity(stats, opts = {}) {
   const { speed = 1, anim = true, title = "Token Activity", chart = "bars" } = opts;
   const t = resolveTheme(opts.theme);
-  const days = stats.byDay;
+  const sourceDays = Array.isArray(stats.byDay) ? stats.byDay : [];
+  const days = safeDays(sourceDays);
   const W = 495, H = 220;
   const skylineLayout = chart === "skyline";
   const chartX = skylineLayout ? 14 : 25;
@@ -644,10 +664,10 @@ export function renderActivity(stats, opts = {}) {
   const body = `
 <g font-family="'Segoe UI',Ubuntu,Sans-Serif">
 <text class="f" x="25" y="${headerY}" font-size="16" font-weight="600" fill="${t.title}">📊 ${esc(title)}</text>
-<text class="f" style="${delay(1, 0.12, speed)}" x="${W - 25}" y="${headerY}" font-size="12" text-anchor="end" fill="${t.subtext}">${formatTokens(windowTotal)} · ${formatCost(windowCost)} · ${days.length}d</text>
+<text class="f" style="${delay(1, 0.12, speed)}" x="${W - 25}" y="${headerY}" font-size="12" text-anchor="end" fill="${t.subtext}">${formatTokens(windowTotal)} · ${formatCost(windowCost)} · ${sourceDays.length}d</text>
 ${chartSvg}
-<text x="${chartX}" y="${baseY + (skylineLayout ? 17 : 18)}" font-size="10" fill="${t.subtext}">${days[0]?.date ?? ""}</text>
-<text x="${chartX + chartW}" y="${baseY + (skylineLayout ? 17 : 18)}" font-size="10" text-anchor="end" fill="${t.subtext}">${days[days.length - 1]?.date ?? ""}</text>
+<text x="${chartX}" y="${baseY + (skylineLayout ? 17 : 18)}" font-size="10" fill="${t.subtext}">${esc(days[0]?.date ?? "")}</text>
+<text x="${chartX + chartW}" y="${baseY + (skylineLayout ? 17 : 18)}" font-size="10" text-anchor="end" fill="${t.subtext}">${esc(days[days.length - 1]?.date ?? "")}</text>
 </g>`;
   return frame(W, H, t, title, body, styles({ anim, speed }, extraCss), opts.scale);
 }

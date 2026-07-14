@@ -7,14 +7,29 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }} / Node ${{ matrix.node }} / ${{ matrix.timezone }}
+    runs-on: ${{ matrix.os }}
+    env:
+      TZ: ${{ matrix.timezone }}
     strategy:
+      fail-fast: false
       matrix:
-        node: [18, 20, 22]
+        include:
+          - { os: ubuntu-latest, node: 18, timezone: UTC }
+          - { os: ubuntu-latest, node: 20, timezone: UTC }
+          - { os: ubuntu-latest, node: 22, timezone: UTC }
+          - { os: ubuntu-latest, node: 24, timezone: UTC }
+          - { os: ubuntu-latest, node: 24, timezone: Asia/Seoul }
+          - { os: ubuntu-latest, node: 24, timezone: Pacific/Honolulu }
+          - { os: windows-latest, node: 20, timezone: UTC }
+          - { os: windows-latest, node: 24, timezone: UTC }
+          - { os: macos-latest, node: 20, timezone: UTC }
+          - { os: macos-latest, node: 24, timezone: UTC }
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
       - run: npm test
+      - run: npm run verify:pack
       - run: npm pack --dry-run

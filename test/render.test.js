@@ -19,7 +19,7 @@ test("agent card shows a percentage distribution", () => {
 });
 
 test("skyline chart renders a night city for compact and activity cards", () => {
-  const stats = { totals: { total: 1000, cost: 1, input: 1, output: 1, cacheRead: 1, cacheWrite: 1 }, byDay: [{ date: "2026-07-01", total: 0, cost: 0 }, { date: "2026-07-02", total: 10, cost: 0.1 }, { date: "2026-07-03", total: 30, cost: 0.15 }, { date: "2026-07-04", total: 55, cost: 0.2 }, { date: "2026-07-05", total: 100, cost: 0.5 }], streak: 1 };
+  const stats = { totals: { total: 19_300_000, cost: 9, input: 19_300_000, output: 0, cacheRead: 0, cacheWrite: 0 }, byDay: [{ date: "2026-07-01", total: 0, cost: 0 }, { date: "2026-07-02", total: 800_000, cost: 0.4 }, { date: "2026-07-03", total: 2_500_000, cost: 1.2 }, { date: "2026-07-04", total: 6_000_000, cost: 2.8 }, { date: "2026-07-05", total: 10_000_000, cost: 4.6 }], streak: 1 };
   assert.match(renderSummaryCompact(stats, { anim: false, chart: "skyline", sky: "day" }), /data-sky="day"/);
   const activity = renderActivity(stats, { anim: false, chart: "skyline", sky: "night" });
   assert.match(activity, /skyline-luminary/);
@@ -110,8 +110,7 @@ test("skyline does not turn a sustained activity plateau into repeated towers", 
   };
   const svg = renderActivity(stats, { anim: false, chart: "skyline", sky: "day" });
   const landmarks = svg.match(/class="skyline-landmark"/g) ?? [];
-  assert.ok(landmarks.length <= 2);
-  assert.doesNotMatch(svg, /skyline-crown/);
+  assert.ok(landmarks.length <= 1);
 });
 
 test("a completely even skyline stays a city district without forced landmarks", () => {
@@ -122,11 +121,11 @@ test("a completely even skyline stays a city district without forced landmarks",
   };
   const svg = renderActivity(stats, { anim: false, chart: "skyline", sky: "day" });
   assert.doesNotMatch(svg, /skyline-landmark/);
-  assert.match(svg, /skyline-midrise/);
+  assert.match(svg, /skyline-house/);
 });
 
 test("continuous skyline stays deterministic and valid across history lengths", () => {
-  for (const count of [5, 30, 180]) {
+  for (const count of [1, 5, 30, 180, 365]) {
     const stats = {
       totals: { total: 1, cost: 0, input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
       byDay: Array.from({ length: count }, (_, i) => ({ date: `2026-01-${String((i % 28) + 1).padStart(2, "0")}`, total: i % 11 === 0 ? 1000 : i % 4 === 0 ? 90 : i % 3 === 0 ? 12 : 0, cost: 0 })),
@@ -138,6 +137,18 @@ test("continuous skyline stays deterministic and valid across history lengths", 
     assert.match(first, /skyline-fabric/);
     assert.doesNotMatch(first, /NaN|undefined/);
   }
+});
+
+test("rendered SVG escapes attribute titles and hostile date labels", () => {
+  const stats = {
+    totals: { total: 10, cost: 0, input: 10, output: 0, cacheRead: 0, cacheWrite: 0 },
+    byDay: [{ date: '<script>&"', total: 10, cost: 0 }],
+    streak: 1,
+  };
+  const svg = renderActivity(stats, { anim: false, chart: "skyline", title: 'A "quoted" & <unsafe> title' });
+  assert.match(svg, /aria-label="A &quot;quoted&quot; &amp; &lt;unsafe&gt; title"/);
+  assert.match(svg, /&lt;script&gt;&amp;"/);
+  assert.doesNotMatch(svg, /<script>/);
 });
 
 test("scale changes intrinsic SVG dimensions without changing its viewBox", () => {
