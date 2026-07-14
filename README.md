@@ -87,6 +87,8 @@ For compact summary trends, choose `--chart bars` for immediate comparison, `--c
 trend, `--chart grass` for a GitHub-style long-term contribution view, or `--chart skyline` for a warm animated city silhouette. Skyline keeps token volume as building height while varying roofs, setbacks, domes, and spires deterministically. Use `--days` to match the story:
 
 Skyline reads like an activity landscape: no activity becomes a small field, light activity becomes homes, then mid-rise and high-rise buildings; only the busiest relative days become distinctive landmark towers. The same history always produces the same city.
+
+By default, Skyline uses the machine's local time: dawn, day, dusk, and night each have a distinct sky, sun or moon, building palette, and window lighting. Scheduled `sync` runs therefore keep an embedded card in step with local time. Use `--sky dawn`, `--sky day`, `--sky dusk`, or `--sky night` to lock a look.
 `7` for a weekly update, `30` for a monthly profile, and the grass default (17 weeks) for consistency.
 
 All cards are SVGs. `--scale 0.75`, `--scale 1`, and `--scale 1.25` change intrinsic output dimensions
@@ -138,6 +140,7 @@ Every supported provider adapter has fixture-backed tests for its session metada
 | `--card` | `summary` | `summary`, `activity`, `models`, `agents`, `passport`, or `all` |
 | `--compact` | | 340×200 summary card |
 | `--chart` | `bars` | Trend: `bars`, `line`, `grass`, or `skyline` (also works with the activity card) |
+| `--sky` | `auto` | Skyline atmosphere: follows local time, or `dawn`, `day`, `dusk`, `night` |
 | `--breakdown` | `log` | Summary comparison: `log` (readable) or `raw` (proportional tokens) |
 | `--theme` | `dark` | `dark`, `light`, `dracula`, or `tokyonight` |
 | `--days` | `30` | Activity-chart window |

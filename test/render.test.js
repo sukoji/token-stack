@@ -20,13 +20,16 @@ test("agent card shows a percentage distribution", () => {
 
 test("skyline chart renders a night city for compact and activity cards", () => {
   const stats = { totals: { total: 1000, cost: 1, input: 1, output: 1, cacheRead: 1, cacheWrite: 1 }, byDay: [{ date: "2026-07-01", total: 0, cost: 0 }, { date: "2026-07-02", total: 10, cost: 0.1 }, { date: "2026-07-03", total: 30, cost: 0.15 }, { date: "2026-07-04", total: 55, cost: 0.2 }, { date: "2026-07-05", total: 100, cost: 0.5 }], streak: 1 };
-  assert.match(renderSummaryCompact(stats, { anim: false, chart: "skyline" }), /skylineSky/);
-  const activity = renderActivity(stats, { anim: false, chart: "skyline" });
-  assert.match(activity, /skylineMoon/);
+  assert.match(renderSummaryCompact(stats, { anim: false, chart: "skyline", sky: "day" }), /data-sky="day"/);
+  const activity = renderActivity(stats, { anim: false, chart: "skyline", sky: "night" });
+  assert.match(activity, /skyline-luminary/);
+  assert.match(activity, /data-sky="night"/);
   assert.match(activity, /skyline-field/);
   assert.match(activity, /skyline-house/);
   assert.match(activity, /skyline-midrise/);
   assert.match(activity, /skyline-landmark/);
+  assert.match(activity, /skyline-window/);
+  assert.match(activity, /skyline-street/);
 });
 
 test("scale changes intrinsic SVG dimensions without changing its viewBox", () => {
