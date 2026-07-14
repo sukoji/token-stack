@@ -43,8 +43,27 @@ Prefer a global install? `npm install --global @sukojin/token-stack`, then use `
 | `activity` | Daily token activity for a selected window |
 | `models` | Token share by model |
 | `agents` | Session-based activity share across Claude Code, Codex, and Antigravity |
+| `passport` | Optional share card that turns session activity into an AI-workflow archetype |
 
 Use `--card all` to render every card. SVGs respect `prefers-reduced-motion`; pass `--no-anim` for fully static output.
+
+`all` intentionally keeps the analytics set (`summary`, `activity`, `models`, `agents`). Passport is a separate opt-in card for people who want a more playful, shareable profile result.
+
+## Agent Passport (optional)
+
+<p align="center">
+  <img src="./assets/token-stack-passport.svg" width="495" alt="Example Token Stack Agent Passport"/>
+</p>
+
+The Passport does not score productivity or reward token consumption. It assigns an activity-profile archetype from local, explainable signals: active agents, unique sessions, streak, and model variety. For example, three active providers produce `Multi-Agent Operator`; a balanced two-provider profile produces `Hybrid Builder`.
+
+```bash
+# Write a shareable Passport without changing your existing cards
+npx @sukojin/token-stack generate --card passport --name YOUR_HANDLE
+
+# Publish it to your existing Gist when you want it in a README
+npx @sukojin/token-stack sync --card passport --name YOUR_HANDLE --gist YOUR_GIST_ID
+```
 
 ## README layout guide
 
@@ -112,7 +131,7 @@ Every supported provider adapter has fixture-backed tests for its session metada
 
 | Flag | Default | Notes |
 |---|---|---|
-| `--card` | `summary` | `summary`, `activity`, `models`, `agents`, or `all` |
+| `--card` | `summary` | `summary`, `activity`, `models`, `agents`, `passport`, or `all` |
 | `--compact` | | 340×200 summary card |
 | `--chart` | `bars` | Compact trend: `bars`, `line`, or `grass` |
 | `--breakdown` | `log` | Summary comparison: `log` (readable) or `raw` (proportional tokens) |
@@ -120,6 +139,9 @@ Every supported provider adapter has fixture-backed tests for its session metada
 | `--days` | `30` | Activity-chart window |
 | `--scale` | `1` | Intrinsic SVG scale from `0.25` to `3`, preserving ratio |
 | `--no-anim` | | Render static cards |
+| `--name` | `LOCAL OPERATOR` | Passport display name |
+| `--season` | `Season 01` | Passport season label |
+| `--archetype` | `auto` | Passport archetype; `auto` derives it from local activity |
 | `--source` | `~/.claude/projects` | Primary Claude Code data directory |
 | `--provider` | `auto` | `auto`, `claude`, `codex`, or `antigravity` |
 | `--codex-source` | `~/.codex/sessions` | Override Codex session directory |

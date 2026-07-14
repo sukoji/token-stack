@@ -24,7 +24,7 @@ Commands:
   json        Print aggregated stats as JSON
 
 Options:
-  --card <name>     summary | activity | models | agents | all   (default: summary)
+  --card <name>     summary | activity | models | agents | passport | all   (default: summary)
   --compact         340x200 summary card (matches github-profile-summary-cards)
   --chart <name>    compact trend style: bars | line | grass   (default: bars)
   --breakdown <mode> summary bars: log | raw                  (default: log)
@@ -34,6 +34,9 @@ Options:
   --scale <x>       intrinsic SVG scale, preserves aspect ratio (default: 1)
   --no-anim         render static cards
   --title <text>    custom card title
+  --name <text>     display name for the passport card
+  --season <text>   passport season label                (default: Season 01)
+  --archetype <x>   passport archetype or auto           (default: auto)
   -o, --out <path>  output file or directory             (default: .)
   --source <dir>    Claude data dir                      (default: ~/.claude/projects)
   --provider <name> ${PROVIDERS.join(" | ")}                       (default: auto)
@@ -70,6 +73,8 @@ function parseArgs(argv) {
     agentSources: [],
     codexSource: defaultCodexSourceDir(),
     antigravitySource: defaultAntigravitySourceDir(),
+    season: "Season 01",
+    archetype: "auto",
   };
   const args = [...argv];
   if (args[0] && !args[0].startsWith("-")) opts.command = args.shift();
@@ -86,6 +91,9 @@ function parseArgs(argv) {
       case "--chart": opts.chart = args.shift(); break;
       case "--breakdown": opts.breakdown = args.shift(); break;
       case "--title": opts.title = args.shift(); break;
+      case "--name": opts.name = args.shift(); break;
+      case "--season": opts.season = args.shift(); break;
+      case "--archetype": opts.archetype = args.shift(); break;
       case "-o": case "--out": opts.out = args.shift(); break;
       case "--source": opts.source = args.shift(); break;
       case "--provider": opts.provider = args.shift(); break;
@@ -133,7 +141,9 @@ function printInit(opts) {
 }
 
 function renderCards(stats, opts) {
-  const names = opts.card === "all" ? Object.keys(CARDS) : [opts.card];
+  // `all` remains the compact analytics set users already automate. Passport
+  // is an intentional, share-oriented opt-in card.
+  const names = opts.card === "all" ? Object.keys(CARDS).filter((name) => name !== "passport") : [opts.card];
   return names.map((name) => {
     const render = CARDS[name];
     if (!render) {

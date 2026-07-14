@@ -323,9 +323,51 @@ export function renderAgents(stats, opts = {}) {
   return frame(W, H, t, title, body, styles({ anim, speed }), opts.scale);
 }
 
+function passportArchetype(stats) {
+  const agents = stats.byAgentActivity ?? [];
+  const sessions = Math.max(stats.agentSessions ?? 0, 1);
+  const providers = agents.filter((agent) => agent.sessions > 0).length;
+  const top = agents[0];
+  const topShare = top ? top.sessions / sessions : 0;
+  if (providers >= 3) return "Multi-Agent Operator";
+  if (providers >= 2 && topShare < 0.8) return "Hybrid Builder";
+  if (top?.name === "codex") return "Codex Operator";
+  if (top?.name === "antigravity") return "Antigravity Explorer";
+  if (stats.streak >= 14) return "Deep Work Runner";
+  return "Claude Native";
+}
+
+export function renderPassport(stats, opts = {}) {
+  const { speed = 1, anim = true, name = "LOCAL OPERATOR", season = "Season 01", archetype = "auto" } = opts;
+  const t = resolveTheme(opts.theme);
+  const W = 495, H = 280;
+  const agents = (stats.byAgentActivity ?? []).filter((agent) => agent.sessions > 0);
+  const label = archetype === "auto" ? passportArchetype(stats) : archetype;
+  const providerNames = agents.map((agent) => agent.name.replace("-code", "")).join("  ·  ") || "local activity";
+  const models = stats.byModel?.filter((model) => model.total > 0).length ?? 0;
+  const metrics = [
+    ["SESSIONS", String(stats.agentSessions ?? 0)],
+    ["AGENTS", String(agents.length)],
+    ["STREAK", `${stats.streak ?? 0}d`],
+    ["MODELS", String(models)],
+  ];
+  const metricSvg = metrics.map(([metric, value], i) => {
+    const x = 25 + i * 92;
+    return `<g class="f" style="${delay(i + 3, 0.1, speed)}"><text x="${x}" y="211" font-size="9" letter-spacing="1" fill="${t.subtext}">${metric}</text><text x="${x}" y="237" font-size="21" font-weight="700" fill="${t.text}">${esc(value)}</text></g>`;
+  }).join("");
+  const chipSvg = agents.slice(0, 3).map((agent, i) => {
+    const x = 25 + i * 116;
+    return `<g class="f" style="${delay(i + 2, 0.1, speed)}"><rect x="${x}" y="154" width="106" height="22" rx="11" fill="${t.chip}" stroke="${t.border}"/><circle cx="${x + 13}" cy="165" r="3.5" fill="${t.bars[i % t.bars.length]}"/><text x="${x + 23}" y="169" font-size="10" fill="${t.text}">${esc(agent.name)}</text></g>`;
+  }).join("");
+  const sigil = `<g class="f" style="${delay(1, 0.12, speed)}" transform="translate(412 95)"><circle r="47" fill="${t.chip}" stroke="${t.border}"/><circle r="35" fill="none" stroke="${t.big[0]}" stroke-width="7" stroke-dasharray="130 90" transform="rotate(-65)"/><circle r="23" fill="none" stroke="${t.big[1]}" stroke-width="4" stroke-dasharray="60 85" transform="rotate(35)"/><circle r="8" fill="${t.big[1]}"/><text y="4" text-anchor="middle" font-size="8" font-weight="700" fill="${t.bg}">AI</text></g>`;
+  const body = `<defs><linearGradient id="passport" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${t.bg}"/><stop offset="100%" stop-color="${t.chip}"/></linearGradient><linearGradient id="passportLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="${t.big[0]}"/><stop offset="100%" stop-color="${t.big[1]}"/></linearGradient></defs><rect x="1" y="1" width="493" height="278" rx="8" fill="url(#passport)"/><g font-family="'Segoe UI',Ubuntu,Sans-Serif"><text class="f" x="25" y="30" font-size="10" font-weight="700" letter-spacing="1.4" fill="${t.title}">AGENT PASSPORT  //  ${esc(String(season).toUpperCase())}</text><line class="bx" x1="25" y1="43" x2="470" y2="43" stroke="url(#passportLine)" stroke-width="2"/><text class="f" style="${delay(1, 0.1, speed)}" x="25" y="72" font-size="11" letter-spacing="1.2" fill="${t.subtext}">${esc(String(name).toUpperCase())}</text><text class="f" style="${delay(2, 0.1, speed)}" x="25" y="113" font-size="27" font-weight="800" fill="${t.text}">${esc(label)}</text><text class="f" style="${delay(2, 0.1, speed)}" x="25" y="133" font-size="11" fill="${t.subtext}">${esc(providerNames)}</text>${sigil}${chipSvg}<line x1="25" y1="190" x2="470" y2="190" stroke="${t.border}"/>${metricSvg}<text x="470" y="261" font-size="9" text-anchor="end" letter-spacing="1" fill="${t.subtext}">LOCAL DATA · ACTIVITY PROFILE</text></g>`;
+  return frame(W, H, t, `Agent Passport: ${label}`, body, styles({ anim, speed }), opts.scale);
+}
+
 export const CARDS = {
   summary: renderSummary,
   activity: renderActivity,
   models: renderModels,
   agents: renderAgents,
+  passport: renderPassport,
 };

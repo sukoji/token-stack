@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { renderAgents, renderSummary, renderSummaryCompact } from "../src/render.js";
+import { renderAgents, renderPassport, renderSummary, renderSummaryCompact } from "../src/render.js";
 
 test("compact card renders a static accessible SVG", () => {
   const svg = renderSummaryCompact({ totals: { total: 1000, cost: 0.01, input: 400, output: 300, cacheRead: 200, cacheWrite: 100 }, byDay: [{ date: "2026-07-01", total: 1000, cost: 0.01 }], streak: 1 }, { anim: false, chart: "bars" });
@@ -29,4 +29,11 @@ test("summary defaults to a log breakdown but can use raw proportions", () => {
   const raw = renderSummary(stats, { anim: false, breakdown: "raw" });
   assert.match(log, /relative log scale/);
   assert.match(raw, /raw token scale/);
+});
+
+test("passport derives a shareable archetype from session activity", () => {
+  const svg = renderPassport({ agentSessions: 12, byAgentActivity: [{ name: "claude-code", sessions: 6 }, { name: "codex", sessions: 4 }, { name: "antigravity", sessions: 2 }], byModel: [{ name: "claude-sonnet", total: 1 }], streak: 5 }, { anim: false, name: "sukoji" });
+  assert.match(svg, /Multi-Agent Operator/);
+  assert.match(svg, /SUKOJI/);
+  assert.match(svg, /AGENT PASSPORT/);
 });

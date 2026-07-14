@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0
+
+- Add an opt-in Agent Passport share card with activity-derived archetypes.
+- Keep `--card all` focused on the existing analytics cards.
+
 ## 0.3.0
 
 - Auto-detect Codex and Antigravity local sessions.
