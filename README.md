@@ -10,15 +10,15 @@
 `token-stack` reads the local JSONL transcripts created by Claude Code, aggregates token usage, and renders animated SVG cards for a GitHub profile, project README, or blog. Your transcripts stay on your machine; only the SVG you choose to publish leaves it.
 
 <p align="center">
-  <img src="./assets/token-stack-summary.svg" width="495" alt="Token Stack wide summary card"/>
+  <img src="https://raw.githubusercontent.com/sukoji/token-stack/main/assets/token-stack-summary.svg" width="495" alt="Token Stack wide summary card"/>
 </p>
 <p align="center">
-  <img src="./assets/token-stack-activity.svg" width="48%" alt="Token Stack activity card in two-column layout"/>
-  <img src="./assets/token-stack-models.svg" width="48%" alt="Token Stack model card in two-column layout"/>
+  <img src="https://raw.githubusercontent.com/sukoji/token-stack/main/assets/token-stack-activity.svg" width="48%" alt="Token Stack activity card in two-column layout"/>
+  <img src="https://raw.githubusercontent.com/sukoji/token-stack/main/assets/token-stack-models.svg" width="48%" alt="Token Stack model card in two-column layout"/>
 </p>
 <p align="center">
-  <img src="./assets/token-stack-agents.svg" width="495" alt="Token Stack agent distribution card"/>
-  <img src="./assets/token-stack-summary-compact.svg" width="340" alt="Compact Token Stack card"/>
+  <img src="https://raw.githubusercontent.com/sukoji/token-stack/main/assets/token-stack-agents.svg" width="495" alt="Token Stack agent distribution card"/>
+  <img src="https://raw.githubusercontent.com/sukoji/token-stack/main/assets/token-stack-summary-compact.svg" width="340" alt="Compact Token Stack card"/>
 </p>
 
 ## Quick start
@@ -52,7 +52,7 @@ Use `--card all` to render every card. SVGs respect `prefers-reduced-motion`; pa
 ## Agent Passport (optional)
 
 <p align="center">
-  <img src="./assets/token-stack-passport.svg" width="495" alt="Example Token Stack Agent Passport"/>
+  <img src="https://raw.githubusercontent.com/sukoji/token-stack/main/assets/token-stack-passport.svg" width="495" alt="Example Token Stack Agent Passport"/>
 </p>
 
 The Passport does not score productivity or reward token consumption. It assigns an activity-profile archetype from local, explainable signals: active agents, unique sessions, streak, and model variety. For example, three active providers produce `Multi-Agent Operator`; a balanced two-provider profile produces `Hybrid Builder`.
