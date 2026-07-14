@@ -84,14 +84,13 @@ The gallery above intentionally shows three placements: a 495px hero, a responsi
 the raw SVG's intrinsic size needs adjusting.
 
 For compact summary trends, choose `--chart bars` for immediate comparison, `--chart line` for a smoother
-trend, `--chart grass` for a GitHub-style long-term contribution view, or `--chart skyline` for a warm animated city silhouette. Skyline keeps token volume as building height while varying flat crowns, setbacks, rounded roofs, and tapered towers deterministically. Use `--days` to match the story:
+trend, `--chart grass` for a GitHub-style long-term contribution view, or `--chart skyline` for an animated city landscape. Skyline uses absolute daily volume for overall city scale and relative activity for building height, so a consistently heavy user gets a denser downtown while peaks remain easy to compare. Use `7` days for a weekly update or `30` for a monthly profile.
 
 Skyline reads like an activity landscape: no activity becomes a small field, light activity becomes homes, then mid-rise and high-rise buildings; only the busiest relative days become distinctive landmark towers. The same history always produces the same city.
 
-It is rendered as connected activity districts rather than one building per day: a low continuous streetwall and distant city keep the horizon intact, while only prominent local peaks become one or two landmark towers. A sustained activity plateau stays a dense city district instead of becoming repeated towers. Building façades and windows are clipped to their exact silhouettes, so architectural detail cannot spill outside a sloped roof or tapered tower.
+It is rendered as connected activity districts rather than one building per day: a low continuous streetwall and distant city keep the horizon intact, while only prominent local peaks become one or two landmark towers. Tiered needle, split-fin, lantern, tapered-twist, and terraced silhouettes provide architectural variety without copying a real building. A deterministic data-derived rotation draws from all five forms, so different histories produce different landmarks while the same history always reproduces the same city. A sustained activity plateau stays a dense city district instead of becoming repeated towers. Building façades and windows are clipped to their exact silhouettes, so architectural detail cannot spill outside a sloped roof or tapered tower.
 
-By default, Skyline uses the machine's local time: dawn, day, dusk, and night each have a distinct sky, sun or moon, building palette, and window lighting. Scheduled `sync` runs therefore keep an embedded card in step with local time. Use `--sky dawn`, `--sky day`, `--sky dusk`, or `--sky night` to lock a look.
-`7` for a weekly update, `30` for a monthly profile, and the grass default (17 weeks) for consistency.
+By default, Skyline uses the machine's local time: dawn, day, dusk, and night each have a distinct sky, sun or moon, building palette, and window lighting. Night mode adds a deep navy sky, moon halo, activity-weighted warm/cool windows, shoreline lights, water, and restrained reflections. A scheduled `sync` regenerates the SVG at the next interval, keeping an embedded card in step with local time without browser-side JavaScript. Use `--sky dawn`, `--sky day`, `--sky dusk`, or `--sky night` to lock a look.
 
 All cards are SVGs. `--scale 0.75`, `--scale 1`, and `--scale 1.25` change intrinsic output dimensions
 without distorting the ratio, which is useful when a README renderer does not apply a width attribute.
