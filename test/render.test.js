@@ -30,11 +30,51 @@ test("skyline chart renders a night city for compact and activity cards", () => 
   assert.match(activity, /skyline-landmark/);
   assert.match(activity, /skyline-window/);
   assert.match(activity, /skyline-street/);
-  assert.match(activity, /class="f skyline-encoding"/);
-  assert.match(activity, /DAILY TOKENS<\/tspan><tspan[^>]+>build the skyline/);
+  assert.match(activity, /class="f skyline-readout"/);
+  assert.match(activity, /HEIGHT = DAILY TOKENS/);
+  assert.match(activity, /class="f skyline-greenway"[^>]+data-token-streak="4"/);
+  assert.match(activity, /<desc>Building height represents daily tokens\./);
   assert.match(activity, /<rect x="14" y="43" width="467" height="153" rx="7"\/>/);
   assert.match(activity, /clipPath id="skylineClip/);
   assert.match(activity, /clip-path="url\(#skylineClip/);
+});
+
+test("skyline city readout uses only daily token activity and stays accessible when compact", () => {
+  const byDay = [0, 12, 0, 8, 15, 21].map((total, index) => ({
+    date: `2026-07-${String(index + 1).padStart(2, "0")}`,
+    total,
+    cost: 0,
+  }));
+  const stats = {
+    totals: { total: 56, cost: 0, input: 56, output: 0, cacheRead: 0, cacheWrite: 0 },
+    byDay,
+    // These intentionally disagree with byDay: a city must never present
+    // cross-provider session history as a token-active streak.
+    streak: 99,
+    activeDays: 999,
+  };
+  const full = renderActivity(stats, { anim: false, chart: "skyline", sky: "day" });
+  assert.match(full, /class="f skyline-readout"[^>]+data-active-days="4"[^>]+data-window-days="6"[^>]+data-token-streak="3"/);
+  assert.match(full, /HEIGHT = DAILY TOKENS · 4\/6 ACTIVE · GREEN PATH = 3D STREAK/);
+  assert.match(full, /class="f skyline-greenway"[^>]+data-token-streak="3"/);
+  assert.match(full, /<title>3-day token streak<\/title>/);
+  assert.doesNotMatch(full, /\b(?:GitHub|PR|contribution|language)\b/i);
+
+  const compact = renderSummaryCompact(stats, { anim: false, chart: "skyline", sky: "day" });
+  assert.doesNotMatch(compact, /skyline-readout|skyline-greenway/);
+  assert.match(compact, /<desc>Building height represents daily tokens\. This 6-day window has 4 token-active days\./);
+  assert.match(compact, /3d token streak/);
+
+  const noTrailingRun = renderActivity({ ...stats, byDay: [...byDay.slice(0, -1), { ...byDay.at(-1), total: 0 }], streak: 50 }, { anim: false, chart: "skyline", sky: "day" });
+  assert.match(noTrailingRun, /data-token-streak="0"/);
+  assert.doesNotMatch(noTrailingRun, /skyline-greenway/);
+
+  const windowFilled = { ...stats, byDay: byDay.slice(3), streak: 500 };
+  const lowerBound = renderActivity(windowFilled, { anim: false, chart: "skyline", sky: "day" });
+  assert.match(lowerBound, /GREEN PATH = ≥3D STREAK/);
+  assert.match(lowerBound, /The token streak spans this entire window, so it is at least 3 days\./);
+  const lowerBoundCompact = renderSummaryCompact(windowFilled, { anim: false, chart: "skyline", sky: "day" });
+  assert.match(lowerBoundCompact, /≥3d token streak/);
 });
 
 test("metropolis skyline preserves height contrast and renders a layered night waterfront", () => {
@@ -146,7 +186,7 @@ test("rendered SVG escapes attribute titles and hostile date labels", () => {
     streak: 1,
   };
   const svg = renderActivity(stats, { anim: false, chart: "skyline", title: 'A "quoted" & <unsafe> title' });
-  assert.match(svg, /aria-label="A &quot;quoted&quot; &amp; &lt;unsafe&gt; title"/);
+  assert.match(svg, /aria-label="A &quot;quoted&quot; &amp; &lt;unsafe&gt; title\. Building height represents daily tokens\./);
   assert.match(svg, /&lt;script&gt;&amp;"/);
   assert.doesNotMatch(svg, /<script>/);
 });

@@ -64,7 +64,15 @@ function assertReferencesResolve(svg, label) {
   }
 }
 
-function assertHealthySvg(svg, { label, compact, sky }) {
+function expectedCitySignals(stats) {
+  const sourceDays = Array.isArray(stats.byDay) ? stats.byDay : [];
+  const activeDays = sourceDays.filter((day) => Number.isFinite(day?.total) && day.total > 0).length;
+  let tokenStreak = 0;
+  for (let index = sourceDays.length - 1; index >= 0 && Number.isFinite(sourceDays[index]?.total) && sourceDays[index].total > 0; index--) tokenStreak++;
+  return { activeDays, windowDays: sourceDays.length, tokenStreak };
+}
+
+function assertHealthySvg(svg, { label, compact, sky, stats }) {
   assert.match(svg, /^<svg\b[\s\S]*<\/svg>$/, `${label}: incomplete SVG`);
   assert.doesNotMatch(svg, /\b(?:NaN|Infinity|undefined)\b/, `${label}: non-finite output`);
   assert.doesNotMatch(svg, /<(?:script|image)\b|(?:href|xlink:href)=["']https?:/i, `${label}: external or executable content`);
@@ -98,22 +106,53 @@ function assertHealthySvg(svg, { label, compact, sky }) {
 
   const landmarks = svg.match(/class="skyline-landmark"/g) ?? [];
   assert.ok(landmarks.length <= (compact ? 1 : 2), `${label}: too many landmarks`);
-  if (compact) assert.doesNotMatch(svg, /skyline-encoding/, `${label}: compact card should not render the micro legend`);
-  else assert.match(svg, /skyline-encoding/, `${label}: full card lost its token-height legend`);
+  const signals = expectedCitySignals(stats);
+  assert.match(svg, /<desc>Building height represents daily tokens\./, `${label}: skyline needs an accessible token-height explanation`);
+  assert.doesNotMatch(svg, /\b(?:GitHub|PR|contribution|language)\b/i, `${label}: skyline claimed unavailable external context`);
+  if (compact) {
+    assert.doesNotMatch(svg, /skyline-readout|skyline-greenway|skyline-encoding/, `${label}: compact card should keep the scene clean`);
+  } else {
+    const readouts = svg.match(/class="f skyline-readout"/g) ?? [];
+    assert.equal(readouts.length, 1, `${label}: full card needs one city readout`);
+    assert.match(svg, /HEIGHT = DAILY TOKENS/, `${label}: full card lost its height explanation`);
+    assert.match(svg, new RegExp(`data-active-days="${signals.activeDays}"`), `${label}: readout active-day count disagrees with daily token data`);
+    assert.match(svg, new RegExp(`data-window-days="${signals.windowDays}"`), `${label}: readout window length disagrees with daily token data`);
+    assert.match(svg, new RegExp(`data-token-streak="${signals.tokenStreak}"`), `${label}: readout streak disagrees with daily token data`);
+    if (signals.tokenStreak) {
+      const displayedStreak = signals.tokenStreak === signals.windowDays ? `≥${signals.tokenStreak}` : String(signals.tokenStreak);
+      assert.match(svg, new RegExp(`GREEN PATH = ${displayedStreak}D STREAK`), `${label}: readout must distinguish a full-window lower-bound streak`);
+    }
+    const greenways = svg.match(/class="f skyline-greenway"/g) ?? [];
+    if (signals.tokenStreak) {
+      assert.equal(greenways.length, 1, `${label}: an active token streak needs one greenway`);
+      const greenway = svg.match(/class="f skyline-greenway"[^>]+data-token-streak="([0-9]+)"[^>]+data-start-x="([0-9.]+)"[^>]+data-end-x="([0-9.]+)"[^>]+data-y="([0-9.]+)"/);
+      assert.ok(greenway, `${label}: greenway data geometry is missing`);
+      const [, streak, start, end, y] = greenway;
+      assert.equal(Number(streak), signals.tokenStreak, `${label}: greenway streak is wrong`);
+      assert.ok(Number(start) >= 14 && Number(end) <= 481 && Number(start) <= Number(end), `${label}: greenway left/right bounds escape the scene`);
+      assert.ok(Number(y) >= 43 && Number(y) <= 196, `${label}: greenway vertical position escapes the scene`);
+    } else {
+      assert.equal(greenways.length, 0, `${label}: zero token streak should not draw a greenway`);
+    }
+  }
 }
 
 export function verifySkylineMatrix() {
   const results = [];
   for (const item of skylineCases) {
     let fullGeometry;
+    let fullReadout;
     for (const sky of SKY_MODES) {
       const fullOptions = { anim: false, chart: "skyline", theme: "tokyonight", sky };
       const full = renderActivity(item.stats, fullOptions);
       assert.equal(full, renderActivity(item.stats, fullOptions), `${item.id}/${sky}: renderer is not deterministic`);
-      assertHealthySvg(full, { label: `${item.id}/${sky}/full`, compact: false, sky });
+      assertHealthySvg(full, { label: `${item.id}/${sky}/full`, compact: false, sky, stats: item.stats });
       const geometry = [...full.matchAll(/<g class="skyline-(?:house|midrise|highrise|landmark)" data-height="[^"]+" data-width="[^"]+" data-score="[^"]+" data-density="[^"]+"/g)].map((match) => match[0]);
       if (fullGeometry) assert.deepEqual(geometry, fullGeometry, `${item.id}: sky phase changed city geometry`);
       else fullGeometry = geometry;
+      const readout = full.match(/<g class="f skyline-readout"[^>]+>/)?.[0] ?? "";
+      if (fullReadout) assert.equal(readout, fullReadout, `${item.id}: sky phase changed city semantics`);
+      else fullReadout = readout;
       const maxDaily = Math.max(...item.stats.byDay.map((day) => day.total), 0);
       if (maxDaily <= 25_000) {
         assert.doesNotMatch(full, /skyline-(?:highrise|landmark)/, `${item.id}: village-scale activity produced a tower`);
@@ -125,7 +164,7 @@ export function verifySkylineMatrix() {
       const compactOptions = { anim: false, chart: "skyline", theme: "tokyonight", sky };
       const compact = renderSummaryCompact(item.stats, compactOptions);
       assert.equal(compact, renderSummaryCompact(item.stats, compactOptions), `${item.id}/${sky}/compact: renderer is not deterministic`);
-      assertHealthySvg(compact, { label: `${item.id}/${sky}/compact`, compact: true, sky });
+      assertHealthySvg(compact, { label: `${item.id}/${sky}/compact`, compact: true, sky, stats: item.stats });
       results.push({ id: item.id, sky, layout: "compact", bytes: Buffer.byteLength(compact), landmarks: compact.match(/class="skyline-landmark"/g)?.length ?? 0 });
     }
   }

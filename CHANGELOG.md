@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.17
+
+- Make the full Skyline self-explanatory with a data-backed readout for daily token height, active-day coverage, and the current token streak green path.
+- Add accessible Skyline descriptions while keeping compact cards visually clean.
+- Derive Skyline cadence and streak only from the displayed token series, never from cross-provider session activity.
+- Verify the readout and greenway across 88 skyline renders, including empty, zero-streak, short, long, and extreme windows.
+
 ## 0.4.16
 
 - Add an 88-render Skyline verification matrix covering empty, sparse, bursty, sustained, heavy, long, and extreme histories in every sky phase and layout.
