@@ -78,11 +78,11 @@ function assertHealthySvg(svg, { label, compact, sky, stats, anim = false }) {
   assert.doesNotMatch(svg, /<(?:script|image)\b|(?:href|xlink:href)=["']https?:/i, `${label}: external or executable content`);
   assert.match(svg, new RegExp(`data-sky="${sky}"`), `${label}: wrong sky phase`);
   assertReferencesResolve(svg, label);
-  assert.ok(Buffer.byteLength(svg) < (compact ? 68_000 : 190_000), `${label}: SVG unexpectedly exceeds the verified size budget`);
+  assert.ok(Buffer.byteLength(svg) < (compact ? 82_000 : 240_000), `${label}: SVG unexpectedly exceeds the verified size budget`);
 
   const sceneHeight = compact ? 72 : 153;
   const dimensions = [...svg.matchAll(/<g class="skyline-(house|midrise|highrise|landmark)" data-height="([0-9.]+)" data-width="([0-9.]+)" data-score="([0-9.]+)" data-density="([0-9.]+)"/g)];
-  assert.ok(dimensions.length <= (compact ? 31 : 44), `${label}: too many foreground buildings`);
+  assert.ok(dimensions.length <= (compact ? 31 : 50), `${label}: too many foreground buildings`);
   for (const [, tier, heightText, widthText, scoreText, densityText] of dimensions) {
     const height = Number(heightText);
     const width = Number(widthText);
@@ -97,7 +97,7 @@ function assertHealthySvg(svg, { label, compact, sky, stats, anim = false }) {
 
   const districts = [...svg.matchAll(/class="skyline-district-building skyline-district-(rear|middle)" data-depth="([12])" data-score="([0-9.]+)"/g)];
   const hasTokenActivity = (stats.byDay ?? []).some((day) => Number(day.total) > 0);
-  assert.ok(districts.length <= (compact ? 25 : 46), `${label}: too many decorative district buildings`);
+  assert.ok(districts.length <= (compact ? 25 : 64), `${label}: too many decorative district buildings`);
   if (hasTokenActivity) {
     assert.deepEqual(new Set(districts.map(([, , depth]) => depth)), new Set(["1", "2"]), `${label}: token activity needs rear and middle city depth`);
     assert.ok(districts.every(([, , , score]) => Number(score) >= 0 && Number(score) <= 1), `${label}: district score is invalid`);

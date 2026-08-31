@@ -20,7 +20,11 @@ test("agent card shows a percentage distribution", () => {
 
 test("skyline chart renders a night city for compact and activity cards", () => {
   const stats = { totals: { total: 19_300_000, cost: 9, input: 19_300_000, output: 0, cacheRead: 0, cacheWrite: 0 }, byDay: [{ date: "2026-07-01", total: 0, cost: 0 }, { date: "2026-07-02", total: 800_000, cost: 0.4 }, { date: "2026-07-03", total: 2_500_000, cost: 1.2 }, { date: "2026-07-04", total: 6_000_000, cost: 2.8 }, { date: "2026-07-05", total: 10_000_000, cost: 4.6 }], streak: 1 };
-  assert.match(renderSummaryCompact(stats, { anim: false, chart: "skyline", sky: "day" }), /data-sky="day"/);
+  const daylight = renderSummaryCompact(stats, { anim: false, chart: "skyline", sky: "day" });
+  assert.match(daylight, /data-sky="day"/);
+  assert.match(daylight, /skyline-water/);
+  assert.match(daylight, /class="skyline-reflected-city"/);
+  assert.match(daylight, /skylineReflectionRipple/);
   const activity = renderActivity(stats, { anim: false, chart: "skyline", sky: "night" });
   assert.match(activity, /skyline-luminary/);
   assert.match(activity, /data-sky="night"/);
@@ -33,6 +37,8 @@ test("skyline chart renders a night city for compact and activity cards", () => 
   assert.ok((activity.match(/class="skyline-district-building/g) ?? []).length > (activity.match(/class="skyline-(?:house|midrise|highrise|landmark)"/g) ?? []).length);
   assert.match(activity, /skyline-glass-sheen/);
   assert.match(activity, /skyline-grain/);
+  assert.match(activity, /skyline-district-side/);
+  assert.match(activity, /skylineReflectionMask/);
   assert.match(activity, /skyline-edge-light/);
   assert.match(activity, /skyline-fabric/);
   assert.match(activity, /skyline-house/);

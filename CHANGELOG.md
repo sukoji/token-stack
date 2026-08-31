@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.2
+
+- Recompose the cinematic Skyline as a denser waterfront city inspired by real horizontal skylines, with narrower overlapping towers and a continuous low-rise streetwall.
+- Keep water present across cinematic dawn, day, dusk, and night so the city reads as one coherent waterfront scene instead of switching composition by time of day.
+- Mirror the complete data-derived city into the water with a deterministic displacement filter, vertical blur, depth fade, ripples, and a textured shoreline.
+- Reduce cartoon-like daylight cloud and sun emphasis while retaining the four time-of-day palettes and local-only SVG output.
+- Verify up to 50 foreground and 64 district buildings within a 240 KB full / 82 KB compact SVG budget across the 88-render matrix.
+
 ## 0.5.1
 
 - Turn each sampled token interval into a deterministic city district instead of presenting the primary buildings as a single flat row.
