@@ -46,7 +46,7 @@ Prefer a global install? `npm install --global @sukojin/token-stack`, then use `
 | `agents` | Session-based activity share across Claude Code, Codex, and Antigravity |
 | `passport` | Optional share card that turns session activity into an AI-workflow archetype |
 
-Use `--card all` to render every card. SVGs respect `prefers-reduced-motion`; pass `--no-anim` for fully static output.
+Use `--card all` to render every card. SVGs respect `prefers-reduced-motion` by default; pass `--motion-policy always` when the published card must animate even if the viewer or operating system requests reduced motion, or `--no-anim` for fully static output.
 Animated cinematic Skylines remain gently active after their construction reveal: dusk and night use sparse independently timed window glints and slow star twinkles, while every phase carries slow irregular water ripples and daylight retains restrained cloud drift. Ambient cycles are deliberately long and deterministic so the card feels alive without flashing.
 
 `all` intentionally keeps the analytics set (`summary`, `activity`, `models`, `agents`). Passport is a separate opt-in card for people who want a more playful, shareable profile result.
@@ -116,9 +116,12 @@ npx @sukojin/token-stack generate --card activity --chart skyline --city-palette
 
 # Keep cars and pedestrians visible but static with --no-anim, or remove them entirely
 npx @sukojin/token-stack generate --card activity --chart skyline --city-motion off
+
+# Force motion for a profile card when Windows/browser animation effects are disabled
+npx @sukojin/token-stack generate --card activity --chart skyline --motion-policy always
 ```
 
-Palettes are `natural`, `graphite`, `copper`, and `evergreen`; bases are `waterfront`, `park`, and `transit`. `--city-motion auto` derives up to five small vehicles and pedestrians from recent session/project signals. Animation is deterministic, restrained, and disabled by `prefers-reduced-motion`.
+Palettes are `natural`, `graphite`, `copper`, and `evergreen`; bases are `waterfront`, `park`, and `transit`. `--city-motion auto` derives up to five small vehicles and pedestrians from recent session/project signals. Animation is deterministic and restrained; the default `system` policy disables it under `prefers-reduced-motion`, while `always` deliberately overrides that viewer preference.
 
 All cards are SVGs. `--scale 0.75`, `--scale 1`, and `--scale 1.25` change intrinsic output dimensions
 without distorting the ratio, which is useful when a README renderer does not apply a width attribute.
@@ -197,6 +200,7 @@ These checks verify the known formats and failure modes; they cannot guarantee t
 | `--city-palette` | `natural` | `natural`, `graphite`, `copper`, or `evergreen` |
 | `--city-base` | `waterfront` | `waterfront`, `park`, or `transit` foreground |
 | `--city-motion` | `auto` | `auto` uses collected session/project signals; `off` removes street life |
+| `--motion-policy` | `system` | `system` respects reduced-motion; `always` keeps SVG animation running |
 | `--breakdown` | `log` | Summary comparison: `log` (readable) or `raw` (proportional tokens) |
 | `--theme` | `dark` | `dark`, `light`, `dracula`, or `tokyonight` |
 | `--days` | `30` | Activity-chart window, from 1 to 3650 days |

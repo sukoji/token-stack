@@ -14,6 +14,7 @@ const PROVIDERS = ["auto", "claude", "codex", "antigravity"];
 const CITY_PALETTES = ["natural", "graphite", "copper", "evergreen"];
 const CITY_BASES = ["waterfront", "park", "transit"];
 const CITY_MOTIONS = ["auto", "off"];
+const MOTION_POLICIES = ["system", "always"];
 
 const HELP = `token-stack — animated activity cards from local Claude Code and Codex sessions
 
@@ -39,6 +40,7 @@ Options:
   --theme <name>    ${Object.keys(THEMES).join(" | ")}   (default: dark)
   --days <n>        window for the activity chart        (default: 30)
   --speed <x>       animation speed multiplier           (default: 1)
+  --motion-policy <name> system | always                  (default: system)
   --scale <x>       intrinsic SVG scale, preserves aspect ratio (default: 1)
   --no-anim         render static cards
   --title <text>    custom card title
@@ -89,6 +91,7 @@ function parseArgs(argv) {
     cityPalette: "natural",
     cityBase: "waterfront",
     cityMotion: "auto",
+    motionPolicy: "system",
   };
   const args = [...argv];
   if (args[0] && !args[0].startsWith("-")) opts.command = args.shift();
@@ -108,6 +111,7 @@ function parseArgs(argv) {
       case "--city-palette": opts.cityPalette = args.shift(); break;
       case "--city-base": opts.cityBase = args.shift(); break;
       case "--city-motion": opts.cityMotion = args.shift(); break;
+      case "--motion-policy": opts.motionPolicy = args.shift(); break;
       case "--breakdown": opts.breakdown = args.shift(); break;
       case "--title": opts.title = args.shift(); break;
       case "--name": opts.name = args.shift(); break;
@@ -142,6 +146,7 @@ function parseArgs(argv) {
   if (!CITY_PALETTES.includes(opts.cityPalette)) throw new Error(`City palette must be ${CITY_PALETTES.map((value) => `"${value}"`).join(", ")}.`);
   if (!CITY_BASES.includes(opts.cityBase)) throw new Error(`City base must be ${CITY_BASES.map((value) => `"${value}"`).join(", ")}.`);
   if (!CITY_MOTIONS.includes(opts.cityMotion)) throw new Error(`City motion must be ${CITY_MOTIONS.map((value) => `"${value}"`).join(", ")}.`);
+  if (!MOTION_POLICIES.includes(opts.motionPolicy)) throw new Error(`Motion policy must be ${MOTION_POLICIES.map((value) => `"${value}"`).join(", ")}.`);
   return opts;
 }
 

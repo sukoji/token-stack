@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1
+
+- Add `--motion-policy system|always` so published SVGs can either respect the viewer's reduced-motion preference or keep their city animation running explicitly.
+- Restore the tracked compact profile card to its 119-day GitHub-style token grass grid while retaining the full-width Activity Skyline as a separate asset.
+- Publish the live Activity Skyline with forced motion so Windows animation settings do not silently freeze its traffic, pedestrians, water, and atmosphere.
+
 ## 0.7.0
 
 - Ingest Codex `token_count` rollouts into token-based cards with cumulative-delta handling, cache-subset normalization, reset recovery, copied-snapshot de-duplication, and provider-scoped history merging.

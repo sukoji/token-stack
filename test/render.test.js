@@ -9,6 +9,15 @@ test("compact card renders a static accessible SVG", () => {
   assert.doesNotMatch(svg, /animation:/);
 });
 
+test("motion policy can force animation when the viewer requests reduced motion", () => {
+  const stats = { totals: { total: 1000, cost: 0.01, input: 400, output: 300, cacheRead: 200, cacheWrite: 100 }, byDay: [{ date: "2026-07-01", total: 1000, cost: 0.01 }], streak: 1 };
+  const system = renderActivity(stats, { anim: true, chart: "skyline", motionPolicy: "system" });
+  const always = renderActivity(stats, { anim: true, chart: "skyline", motionPolicy: "always" });
+  assert.match(system, /prefers-reduced-motion:reduce/);
+  assert.doesNotMatch(always, /prefers-reduced-motion:reduce/);
+  assert.match(always, /@keyframes skylineCloudDrift/);
+});
+
 test("agent card shows a percentage distribution", () => {
   const svg = renderAgents({ totals: { total: 0 }, agentSessions: 10, byAgentActivity: [{ name: "claude-code", sessions: 6 }, { name: "codex", sessions: 4 }] }, { anim: false });
   assert.match(svg, /claude-code/);

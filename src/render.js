@@ -113,9 +113,11 @@ function shortModel(id) {
 
 // Shared <style>: entrance fades, bar growth, donut sweep. `speed` divides
 // every duration; `anim: false` renders the final frame statically.
-function styles({ anim, speed }, extra = "") {
+function styles({ anim, speed, motionPolicy = "system" }, extra = "") {
   if (!anim) return "";
   const s = (base) => (base / speed).toFixed(2) + "s";
+  const reducedMotionCss = motionPolicy === "always" ? "" : `
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}.sky-star{animation:none!important;opacity:.3!important;transform:none!important}.skyline-cloud-bank,.skyline-horizon-haze,.skyline-window-glint,.skyline-water-ripple{animation:none!important;transform:none!important}.skyline-vehicle-flow,.skyline-pedestrian-flow{animation:none!important;transform:none!important}}`;
   return `<style>
 .f{opacity:0;animation:fu ${s(0.7)} cubic-bezier(.4,0,.2,1) forwards}
 @keyframes fu{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
@@ -124,7 +126,7 @@ function styles({ anim, speed }, extra = "") {
 .by{transform:scaleY(0);transform-box:fill-box;transform-origin:center bottom;animation:gy ${s(0.8)} cubic-bezier(.2,.6,.2,1) forwards}
 @keyframes gy{to{transform:scaleY(1)}}
 ${extra}
-@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}.sky-star{animation:none!important;opacity:.3!important;transform:none!important}.skyline-cloud-bank,.skyline-horizon-haze,.skyline-window-glint,.skyline-water-ripple{animation:none!important;transform:none!important}.skyline-vehicle-flow,.skyline-pedestrian-flow{animation:none!important;transform:none!important}}
+${reducedMotionCss}
 </style>`;
 }
 
@@ -1003,7 +1005,7 @@ export function renderSummaryCompact(stats, opts = {}) {
 ${chartSvg}
 <text class="f" style="${delay(8, 0.12, speed)}" x="20" y="${H - 10}" font-size="9.5" fill="${t.subtext}">in ${formatTokens(totals.input)} · out ${formatTokens(totals.output)} · cache ${formatTokens(totals.cacheRead + totals.cacheWrite)}</text>
 </g>`;
-  return frame(W, H, t, title, body, styles({ anim, speed }, extraCss), opts.scale, signals?.description);
+  return frame(W, H, t, title, body, styles({ anim, speed, motionPolicy: opts.motionPolicy }, extraCss), opts.scale, signals?.description);
 }
 
 export function renderSummary(stats, opts = {}) {
@@ -1069,7 +1071,7 @@ ${spark}
 <line x1="${chartX}" y1="${baseY + 1}" x2="${chartX + chartW}" y2="${baseY + 1}" stroke="${t.border}"/>
 <text class="f" style="${delay(8, 0.12, speed)}" x="25" y="${H - 18}" font-size="11" fill="${t.subtext}">${footer}</text>
 </g>`;
-  return frame(W, H, t, title, body, styles({ anim, speed }), opts.scale);
+  return frame(W, H, t, title, body, styles({ anim, speed, motionPolicy: opts.motionPolicy }), opts.scale);
 }
 
 export function renderActivity(stats, opts = {}) {
@@ -1127,7 +1129,7 @@ ${chartSvg}
 <text x="${chartX}" y="${dateY}" font-size="${skylineLayout ? "9.7" : "10"}" fill="${t.subtext}">${esc(days[0]?.date ?? "")}</text>
 <text x="${chartX + chartW}" y="${dateY}" font-size="${skylineLayout ? "9.7" : "10"}" text-anchor="end" fill="${t.subtext}">${esc(days[days.length - 1]?.date ?? "")}</text>
 </g>`;
-  return frame(W, H, t, title, body, styles({ anim, speed }, extraCss), opts.scale, signals?.description);
+  return frame(W, H, t, title, body, styles({ anim, speed, motionPolicy: opts.motionPolicy }, extraCss), opts.scale, signals?.description);
 }
 
 export function renderModels(stats, opts = {}) {
@@ -1177,7 +1179,7 @@ ${arcs}
 <text class="f" style="${delay(3, 0.12, speed)}" x="${cx}" y="${cy + 18}" font-size="10" text-anchor="middle" fill="${t.subtext}">tokens</text>
 ${legend}
 </g>`;
-  return frame(W, H, t, title, body, styles({ anim, speed }, donutKeyframes), opts.scale);
+  return frame(W, H, t, title, body, styles({ anim, speed, motionPolicy: opts.motionPolicy }, donutKeyframes), opts.scale);
 }
 
 export function renderAgents(stats, opts = {}) {
@@ -1200,7 +1202,7 @@ export function renderAgents(stats, opts = {}) {
     ? `<text class="f" style="${delay(3, 0.12, speed)}" x="25" y="112" font-size="11" fill="${t.subtext}">Codex and Antigravity are auto-detected when installed.</text>`
     : "";
   const body = `<g font-family="'Segoe UI',Ubuntu,Sans-Serif"><text class="f" x="25" y="33" font-size="16" font-weight="600" fill="${t.title}">◈ ${esc(title)}</text><text class="f" style="${delay(1, 0.12, speed)}" x="470" y="33" font-size="11" text-anchor="end" fill="${t.subtext}">sessions · all time</text>${rows || `<text x="25" y="76" font-size="12" fill="${t.subtext}">No agent activity found yet.</text>`}${hint}</g>`;
-  return frame(W, H, t, title, body, styles({ anim, speed }), opts.scale);
+  return frame(W, H, t, title, body, styles({ anim, speed, motionPolicy: opts.motionPolicy }), opts.scale);
 }
 
 function passportArchetype(stats) {
@@ -1251,7 +1253,7 @@ export function renderPassport(stats, opts = {}) {
   const radar = `<g transform="translate(397 125)"><g class="passport-orbit"><circle r="67" fill="none" stroke="${t.big[0]}" stroke-opacity=".18" stroke-width="1" stroke-dasharray="3 7"/><circle r="49" fill="none" stroke="${t.big[1]}" stroke-opacity=".32" stroke-width="1.5" stroke-dasharray="2 6"/></g>${core}<circle class="passport-pulse" r="26" fill="none" stroke="${t.big[1]}" stroke-width="1.5"/><circle class="passport-spark" cx="-59" cy="-26" r="3" fill="${t.bars[2]}"/><circle class="passport-spark late" cx="51" cy="35" r="2.5" fill="${t.big[1]}"/></g>`;
   const body = `<defs><linearGradient id="passport" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#111b3d"/><stop offset="54%" stop-color="${t.bg}"/><stop offset="100%" stop-color="#25183f"/></linearGradient><radialGradient id="passportGlow" cx="82%" cy="25%" r="58%"><stop offset="0%" stop-color="${t.big[1]}" stop-opacity=".25"/><stop offset="100%" stop-color="${t.bg}" stop-opacity="0"/></radialGradient><linearGradient id="passportCore" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${t.big[0]}"/><stop offset="1" stop-color="${t.big[1]}"/></linearGradient><clipPath id="passportAvatarClip"><circle r="33"/></clipPath></defs><rect x="1" y="1" width="493" height="278" rx="8" fill="url(#passport)"/><rect x="1" y="1" width="493" height="278" rx="8" fill="url(#passportGlow)"/><path d="M0 53 H495" stroke="${t.big[0]}" stroke-opacity=".16"/><path d="M220 1 V279" stroke="${t.big[1]}" stroke-opacity=".12"/><g font-family="'Segoe UI',Ubuntu,Sans-Serif"><g class="f"><circle cx="27" cy="29" r="5" fill="${t.bars[1]}"/><circle class="passport-live" cx="27" cy="29" r="5" fill="none" stroke="${t.bars[1]}"/><text x="40" y="33" font-size="10" font-weight="800" letter-spacing="1.3" fill="${t.title}">TOKEN STACK / AGENT PASSPORT</text><text x="470" y="33" text-anchor="end" font-size="9" font-weight="700" letter-spacing="1.1" fill="${t.subtext}">${esc(String(season).toUpperCase())}</text></g><text class="f" style="${delay(1, 0.1, speed)}" x="25" y="80" font-size="10" font-weight="700" letter-spacing="1.4" fill="${t.subtext}">${esc(String(name).toUpperCase())}</text><text class="f" style="${delay(2, 0.1, speed)}" x="25" y="114" font-size="25" font-weight="800" fill="${t.text}">${esc(label)}</text><text class="f" style="${delay(3, 0.1, speed)}" x="25" y="130" font-size="10" fill="${t.subtext}">LOCAL ACTIVITY PROFILE · EXPLAINABLE SIGNALS</text>${agentSvg}${radar}<rect x="15" y="207" width="465" height="59" rx="9" fill="${t.chip}" fill-opacity=".66" stroke="${t.border}" stroke-opacity=".7"/>${metricSvg}<text x="454" y="246" text-anchor="end" font-size="8" font-weight="700" letter-spacing="1" fill="${t.subtext}">PRIVATE BY DESIGN</text><text x="454" y="257" text-anchor="end" font-size="8" fill="${t.subtext}">local sessions only</text></g>`;
   const extraCss = `.passport-bar{transform:scaleX(0);transform-box:fill-box;transform-origin:left center;animation:gx ${(0.8 / speed).toFixed(2)}s cubic-bezier(.2,.6,.2,1) forwards}.passport-orbit{transform-origin:center;transform-box:fill-box;animation:spin ${(12 / speed).toFixed(2)}s linear infinite}.passport-pulse{transform-origin:center;transform-box:fill-box;animation:pulse ${(2.4 / speed).toFixed(2)}s ease-out infinite}@keyframes pulse{0%{opacity:.8;transform:scale(.65)}100%{opacity:0;transform:scale(1.55)}}.passport-live{transform-origin:center;transform-box:fill-box;animation:live ${(1.8 / speed).toFixed(2)}s ease-out infinite}@keyframes live{0%,100%{opacity:.8;transform:scale(1)}55%{opacity:0;transform:scale(2.2)}}.passport-spark{animation:twinkle ${(1.6 / speed).toFixed(2)}s ease-in-out infinite}@keyframes twinkle{50%{opacity:.25;transform:scale(.55)}}.passport-spark.late{animation-delay:${(0.7 / speed).toFixed(2)}s}`;
-  return frame(W, H, t, `Agent Passport: ${label}`, body, styles({ anim, speed }, extraCss), opts.scale);
+  return frame(W, H, t, `Agent Passport: ${label}`, body, styles({ anim, speed, motionPolicy: opts.motionPolicy }, extraCss), opts.scale);
 }
 
 export const CARDS = {

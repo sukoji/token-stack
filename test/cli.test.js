@@ -92,3 +92,9 @@ test("CLI validates city composition options before reading local activity", () 
     assert.match(result.stderr, message);
   }
 });
+
+test("CLI validates the viewer motion policy before reading local activity", () => {
+  const result = run(["generate", "--motion-policy", "sometimes"]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Motion policy must be "system", "always"/);
+});
