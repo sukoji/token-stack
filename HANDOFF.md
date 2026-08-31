@@ -237,3 +237,29 @@
 ### Blockers
 
 - None.
+
+## 2026-08-31 - Natural Pedestrian Walk Cycles v0.7.3
+
+### Work summary
+
+- Split every pedestrian into independently transformable left/right arm and leg groups while keeping the existing detailed body silhouettes.
+- Added opposing arm/leg swing phases and a restrained half-cycle body bob, with slightly different deterministic cadence per person.
+- Kept street traversal separate from the limb cycle so pedestrians visibly walk instead of sliding in a fixed pose.
+- Preserved `--no-anim`, speed scaling, the default reduced-motion policy, and the profile's explicit forced-motion mode.
+
+### Verification
+
+- `npm test`: 51 tests passed, including eight-arm/eight-leg group counts and walk keyframe assertions.
+- `npm run verify:skyline`: 88 renders passed across 11 profiles.
+- `npm run verify:city`: four palette/base variants rendered successfully.
+- `npm run verify:pack`: package installed and executed successfully from a spaced Unicode path.
+- `npm pack --dry-run --json`: package `@sukojin/token-stack@0.7.3` validated at 51,010 bytes packed and 177,493 bytes unpacked.
+- Chromium rendered two 3x live-card frames 400 ms apart; differing frame hashes and cropped visual comparison confirmed street traversal, opposing limb poses, and body bobbing.
+
+### Commits
+
+- `3f4f261` - Animate natural pedestrian walk cycles.
+
+### Blockers
+
+- None.
