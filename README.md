@@ -47,6 +47,7 @@ Prefer a global install? `npm install --global @sukojin/token-stack`, then use `
 | `passport` | Optional share card that turns session activity into an AI-workflow archetype |
 
 Use `--card all` to render every card. SVGs respect `prefers-reduced-motion`; pass `--no-anim` for fully static output.
+Animated cinematic Skylines remain gently active after their construction reveal: dusk and night use sparse independently timed window glints and slow star twinkles, while every phase carries slow irregular water ripples and daylight retains restrained cloud drift. Ambient cycles are deliberately long and deterministic so the card feels alive without flashing.
 
 `all` intentionally keeps the analytics set (`summary`, `activity`, `models`, `agents`). Passport is a separate opt-in card for people who want a more playful, shareable profile result.
 

@@ -103,14 +103,22 @@ test("skyline stars stay in place and use a slow reduced-motion-safe twinkle", (
   assert.match(night, /@keyframes skylineStarTwinkle\{0%,100%\{opacity:\.16\}50%\{opacity:\.52\}\}/);
   assert.doesNotMatch(night, /skylineStarTwinkle[^@]*transform:/);
   assert.match(night, /\.sky-star\{animation:none!important;opacity:\.3!important;transform:none!important\}/);
+  assert.match(night, /skyline-window-glint/);
+  assert.match(night, /@keyframes skylineWindowGlint/);
+  assert.match(night, /class="skyline-water-ripple" style="animation-delay:-[0-9.]+s;animation-duration:[0-9.]+s"/);
+  assert.match(night, /@keyframes skylineWaterDrift/);
+  assert.match(night, /\.skyline-window-glint,\.skyline-water-ripple\{animation:none!important;transform:none!important\}/);
   const starDelays = [...night.matchAll(/class="sky-star" style="animation-delay:(-[0-9.]+)s"/g)].map((match) => Number(match[1]));
   assert.ok(starDelays.length > 0);
   assert.ok(starDelays.every((delay) => delay <= 0 && delay >= -10));
 
   const day = renderActivity(stats, { anim: true, chart: "skyline", sky: "day" });
   assert.doesNotMatch(day, /class="sky-star"/);
+  assert.doesNotMatch(day, /class="[^"]*skyline-window-glint/);
+  assert.doesNotMatch(day, /@keyframes skylineWindowGlint/);
+  assert.match(day, /class="skyline-water-ripple" style="animation-delay:-[0-9.]+s;animation-duration:[0-9.]+s"/);
   const staticNight = renderActivity(stats, { anim: false, chart: "skyline", sky: "night" });
-  assert.doesNotMatch(staticNight, /skylineStarTwinkle|animation-delay:-/);
+  assert.doesNotMatch(staticNight, /skylineStarTwinkle|skylineWindowGlint|skylineWaterDrift|animation-delay:-/);
 });
 
 test("skyline city readout uses only daily token activity and stays accessible when compact", () => {

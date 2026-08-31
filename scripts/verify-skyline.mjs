@@ -118,9 +118,12 @@ function assertHealthySvg(svg, { label, compact, sky, stats, anim = false }) {
   }
   if (anim) {
     assert.match(svg, /\.skyline-building-grow\{clip-path:inset\(100% 0 0 0\) fill-box;animation:skylineBuildingGrow/, `${label}: animated skyline lost its shared construction reveal`);
-    assert.doesNotMatch(svg, /class="skyline-window[^"]*" style="animation-delay:/, `${label}: animated skyline adds per-window delay bloat`);
+    const glints = [...svg.matchAll(/class="skyline-window[^"]*skyline-window-glint" style="animation-delay:([0-9.]+)s;animation-duration:([0-9.]+)s"/g)];
+    assert.ok(glints.length <= (compact ? 12 : 24), `${label}: too many independently animated windows`);
+    assert.ok(glints.every(([, delay, duration]) => Number(delay) >= 2.4 && Number(delay) <= 6.7 && Number(duration) >= 7.5 && Number(duration) <= 13.1), `${label}: window glint timing is outside the restrained range`);
+    assert.doesNotMatch(svg, /class="skyline-window(?![^"]*skyline-window-glint)[^"]*" style=/, `${label}: ordinary windows received per-window animation state`);
   } else {
-    assert.doesNotMatch(svg, /skyline-window-grow|skylineBuildingGrow|clip-path:inset\(/, `${label}: static skyline leaked animation-only window state`);
+    assert.doesNotMatch(svg, /skyline-window-grow|skyline-window-glint|skylineBuildingGrow|skylineWaterDrift|clip-path:inset\(/, `${label}: static skyline leaked animation-only window state`);
   }
 
   const landmarks = svg.match(/class="skyline-landmark"/g) ?? [];

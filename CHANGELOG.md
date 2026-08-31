@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.3
+
+- Keep animated cinematic cities subtly alive after construction completes.
+- Let only a sparse deterministic subset of lit dusk and night windows dim and recover on independent 10-13 second cycles, alongside the existing slow star twinkle.
+- Drift waterfront ripple strokes on independent 13-21 second cycles in every sky phase, complementing the existing restrained daylight cloud movement.
+- Disable window, water, cloud, haze, and star ambient motion under `prefers-reduced-motion`, while `--no-anim` remains fully static.
+
 ## 0.5.2
 
 - Recompose the cinematic Skyline as a denser waterfront city inspired by real horizontal skylines, with narrower overlapping towers and a continuous low-rise streetwall.
