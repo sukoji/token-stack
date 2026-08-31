@@ -28,6 +28,7 @@ Options:
   --compact         340x200 summary card (matches github-profile-summary-cards)
   --chart <name>    trend style: bars | line | grass | skyline (default: bars)
   --sky <mode>      skyline sky: auto | dawn | day | dusk | night (default: auto/local time)
+  --skyline-style <name> skyline look: cinematic | classic (default: cinematic)
   --breakdown <mode> summary bars: log | raw                  (default: log)
   --theme <name>    ${Object.keys(THEMES).join(" | ")}   (default: dark)
   --days <n>        window for the activity chart        (default: 30)
@@ -78,6 +79,7 @@ function parseArgs(argv) {
     season: "Season 01",
     archetype: "auto",
     sky: "auto",
+    skylineStyle: "cinematic",
   };
   const args = [...argv];
   if (args[0] && !args[0].startsWith("-")) opts.command = args.shift();
@@ -93,6 +95,7 @@ function parseArgs(argv) {
       case "--compact": opts.compact = true; break;
       case "--chart": opts.chart = args.shift(); break;
       case "--sky": opts.sky = args.shift(); break;
+      case "--skyline-style": opts.skylineStyle = args.shift(); break;
       case "--breakdown": opts.breakdown = args.shift(); break;
       case "--title": opts.title = args.shift(); break;
       case "--name": opts.name = args.shift(); break;
@@ -123,6 +126,7 @@ function parseArgs(argv) {
   if (!["public", "private"].includes(opts.privacy)) throw new Error('Privacy must be "public" or "private".');
   if (!["log", "raw"].includes(opts.breakdown)) throw new Error('Breakdown must be "log" or "raw".');
   if (!["auto", "dawn", "day", "dusk", "night"].includes(opts.sky)) throw new Error('Sky must be "auto", "dawn", "day", "dusk", or "night".');
+  if (!["cinematic", "classic"].includes(opts.skylineStyle)) throw new Error('Skyline style must be "cinematic" or "classic".');
   return opts;
 }
 

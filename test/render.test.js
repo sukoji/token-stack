@@ -24,6 +24,10 @@ test("skyline chart renders a night city for compact and activity cards", () => 
   const activity = renderActivity(stats, { anim: false, chart: "skyline", sky: "night" });
   assert.match(activity, /skyline-luminary/);
   assert.match(activity, /data-sky="night"/);
+  assert.match(activity, /data-skyline-style="cinematic"/);
+  assert.match(activity, /skyline-horizon-glow/);
+  assert.match(activity, /skyline-far-building/);
+  assert.match(activity, /skyline-edge-light/);
   assert.match(activity, /skyline-fabric/);
   assert.match(activity, /skyline-house/);
   assert.match(activity, /skyline-midrise/);
@@ -39,6 +43,18 @@ test("skyline chart renders a night city for compact and activity cards", () => 
   assert.match(activity, /class="skyline-legend-rule" d="M14 199H481"/);
   assert.match(activity, /clipPath id="skylineClip/);
   assert.match(activity, /clip-path="url\(#skylineClip/);
+});
+
+test("classic skyline remains available without cinematic material layers", () => {
+  const stats = {
+    totals: { total: 4_200_000, cost: 2, input: 4_200_000, output: 0, cacheRead: 0, cacheWrite: 0 },
+    byDay: [120_000, 400_000, 900_000, 2_780_000].map((total, index) => ({ date: `2026-07-${String(index + 1).padStart(2, "0")}`, total, cost: 0 })),
+    streak: 4,
+  };
+  const classic = renderActivity(stats, { anim: false, chart: "skyline", sky: "night", skylineStyle: "classic" });
+  assert.match(classic, /data-skyline-style="classic"/);
+  assert.doesNotMatch(classic, /skyline-horizon-glow|skyline-far-building|skyline-edge-light|skylineMaterial/);
+  assert.throws(() => renderActivity(stats, { anim: false, chart: "skyline", skylineStyle: "photoreal" }), /Unknown skyline style/);
 });
 
 test("animated skyline grows its facade and windows from the street upward", () => {

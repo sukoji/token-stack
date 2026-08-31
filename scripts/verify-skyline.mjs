@@ -78,7 +78,7 @@ function assertHealthySvg(svg, { label, compact, sky, stats, anim = false }) {
   assert.doesNotMatch(svg, /<(?:script|image)\b|(?:href|xlink:href)=["']https?:/i, `${label}: external or executable content`);
   assert.match(svg, new RegExp(`data-sky="${sky}"`), `${label}: wrong sky phase`);
   assertReferencesResolve(svg, label);
-  assert.ok(Buffer.byteLength(svg) < (compact ? 55_000 : 120_000), `${label}: SVG unexpectedly exceeds the verified size budget`);
+  assert.ok(Buffer.byteLength(svg) < (compact ? 58_000 : 155_000), `${label}: SVG unexpectedly exceeds the verified size budget`);
 
   const sceneHeight = compact ? 72 : 153;
   const dimensions = [...svg.matchAll(/<g class="skyline-(house|midrise|highrise|landmark)" data-height="([0-9.]+)" data-width="([0-9.]+)" data-score="([0-9.]+)" data-density="([0-9.]+)"/g)];

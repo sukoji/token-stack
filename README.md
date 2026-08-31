@@ -97,6 +97,13 @@ It is rendered as connected activity districts rather than one building per day:
 
 By default, Skyline uses the machine's local time: dawn, day, dusk, and night each have a distinct sky, sun or moon, building palette, and window lighting. Night mode adds a deep navy sky, moon halo, activity-weighted warm/cool windows, shoreline lights, water, and restrained reflections. A scheduled `sync` regenerates the SVG at the next interval, keeping an embedded card in step with local time without browser-side JavaScript. Use `--sky dawn`, `--sky day`, `--sky dusk`, or `--sky night` to lock a look.
 
+The default `cinematic` Skyline adds material gradients, edge lighting, layered distant districts, horizon haze, atmospheric depth, and segmented waterfront reflections while keeping the city fully deterministic and local. Use `--skyline-style classic` when you prefer the flatter pre-0.5 look or need the smallest possible SVG.
+
+```bash
+npx @sukojin/token-stack generate --card activity --chart skyline --sky night
+npx @sukojin/token-stack generate --card activity --chart skyline --skyline-style classic
+```
+
 All cards are SVGs. `--scale 0.75`, `--scale 1`, and `--scale 1.25` change intrinsic output dimensions
 without distorting the ratio, which is useful when a README renderer does not apply a width attribute.
 
@@ -169,6 +176,7 @@ These checks verify the known formats and failure modes; they cannot guarantee t
 | `--compact` | | 340×200 summary card |
 | `--chart` | `bars` | Trend: `bars`, `line`, `grass`, or `skyline` (also works with the activity card) |
 | `--sky` | `auto` | Skyline atmosphere: follows local time, or `dawn`, `day`, `dusk`, `night` |
+| `--skyline-style` | `cinematic` | Skyline rendering: layered `cinematic` or lighter `classic` |
 | `--breakdown` | `log` | Summary comparison: `log` (readable) or `raw` (proportional tokens) |
 | `--theme` | `dark` | `dark`, `light`, `dracula`, or `tokyonight` |
 | `--days` | `30` | Activity-chart window, from 1 to 3650 days |

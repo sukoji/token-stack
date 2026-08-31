@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+- Make the new cinematic Skyline the default while preserving the previous look with `--skyline-style classic`.
+- Add material-aware facade gradients, edge lighting, horizontal floor bands, and richer warm/cool window depth.
+- Add distant city layers, horizon glow and haze, atmospheric particles, softer clouds, a scene vignette, and segmented waterfront reflections.
+- Keep cinematic output deterministic, local-only, reduced-motion safe, and bounded to a verified 155 KB full-card / 58 KB compact-card budget.
+- Preserve the existing token-to-height, density, landmark, active-day, and streak semantics across both visual styles.
+
 ## 0.4.17
 
 - Make the full Skyline self-explanatory with a data-backed readout for daily token height, active-day coverage, and the current token streak green path.

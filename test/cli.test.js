@@ -74,3 +74,9 @@ test("CLI reports corrupt history without overwriting it or printing a stack tra
     fs.rmSync(temp, { recursive: true, force: true });
   }
 });
+
+test("CLI validates the skyline style before reading local activity", () => {
+  const result = run(["generate", "--skyline-style", "photoreal"]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Skyline style must be "cinematic" or "classic"/);
+});
