@@ -50,3 +50,29 @@
 ### Blockers
 
 - None for the skyline release. Codex token ingestion remains a separate follow-up because its supported log schema and aggregation semantics need to be defined.
+
+## 2026-08-31 - Reflected Waterfront Skyline v0.5.2
+
+### Work summary
+
+- Used the supplied real waterfront skyline photograph as a composition reference without embedding or copying the raster image.
+- Increased the cinematic city's horizontal density with narrower overlapping rear, middle, and foreground buildings plus more detailed district faces.
+- Kept a waterfront plane in every cinematic sky phase and mirrored the complete data-derived city into it using deterministic SVG displacement, vertical blur, and depth fade.
+- Added a textured shoreline and irregular ripples, while reducing the daylight sun, cloud, and grain emphasis for a more architectural presentation.
+- Preserved the local-only, deterministic renderer, the token-height semantics, and the `classic` style.
+
+### Verification
+
+- `npm test`: 41 tests passed.
+- `npm run verify:skyline`: 88 renders passed across 11 profiles; largest SVG was 214,666 bytes.
+- `npm run verify:pack`: packed, installed, and executed successfully from a spaced Unicode path.
+- `npm pack --dry-run --json`: package `@sukojin/token-stack@0.5.2` validated at 42,309 bytes packed and 142,247 bytes unpacked.
+- Chromium visual QA completed against the full phase/profile gallery, including daylight and dusk mirrored-waterfront cases.
+
+### Commits
+
+- `943c49c` - Render a reflected waterfront skyline.
+
+### Blockers
+
+- None for the skyline release. Pure procedural SVG can reproduce the reference's density, depth, and reflection composition, but not literal photo-level pixels without embedding a raster asset.
