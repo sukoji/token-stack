@@ -14,7 +14,21 @@ export function defaultHistoryFile() {
 }
 
 export function defaultCodexSourceDir() {
-  return path.join(os.homedir(), ".codex", "sessions");
+  return defaultCodexSourceDirs()[0];
+}
+
+export function defaultCodexSourceDirs() {
+  const roots = [
+    process.env.CODEX_HOME ? path.join(process.env.CODEX_HOME, "sessions") : null,
+    path.join(os.homedir(), ".codex", "sessions"),
+  ].filter(Boolean);
+  const seen = new Set();
+  return roots.filter((root) => {
+    const key = path.resolve(root).toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function defaultAntigravitySourceDir() {
@@ -49,6 +63,11 @@ function timestampMillis(value) {
   if ((typeof value !== "string" && typeof value !== "number") || value === "") return null;
   const time = new Date(value).getTime();
   return Number.isFinite(time) ? time : null;
+}
+
+function projectNameFromPath(value, fallback) {
+  if (typeof value !== "string" || !value) return fallback;
+  return value.replace(/[\\/]+$/, "").split(/[\\/]/).filter(Boolean).at(-1) || fallback;
 }
 
 const dayFormatters = new Map();
@@ -137,20 +156,83 @@ export function collectEntries(sourceDir = defaultSourceDir(), { agent = "claude
   return entries;
 }
 
-// Codex session files expose session/activity events, but not the billed
-// input/output/cache usage that Claude transcripts expose. Return one zero-token
-// entry per session so it participates only in session-based agent activity.
-export function collectCodexSessions(sourceDir = defaultCodexSourceDir()) {
+function codexUsageVector(value) {
+  if (!value || typeof value !== "object") return null;
+  return {
+    input: positiveNumber(value.input_tokens),
+    cacheRead: positiveNumber(value.cached_input_tokens),
+    cacheWrite: positiveNumber(value.cache_write_input_tokens),
+    output: positiveNumber(value.output_tokens),
+  };
+}
+
+function subtractCodexUsage(current, previous) {
+  if (!current || !previous) return null;
+  const result = {};
+  for (const key of ["input", "cacheRead", "cacheWrite", "output"]) {
+    const delta = current[key] - previous[key];
+    if (!Number.isFinite(delta) || delta < 0) return null;
+    result[key] = delta;
+  }
+  return result;
+}
+
+function additiveCodexUsage(value) {
+  if (!value) return null;
+  // Codex reports cached/cache-write input as subsets of input_tokens and
+  // reasoning output as a subset of output_tokens. Keep the four stored
+  // categories additive instead of counting either subset twice.
+  const cacheRead = Math.min(value.input, value.cacheRead);
+  const cacheWrite = Math.min(Math.max(0, value.input - cacheRead), value.cacheWrite);
+  return {
+    input: Math.max(0, value.input - cacheRead - cacheWrite),
+    output: value.output,
+    cacheRead,
+    cacheWrite,
+  };
+}
+
+function codexModel(payload, fallback) {
+  for (const value of [payload?.model, payload?.model_name, payload?.model_slug]) {
+    if (typeof value === "string" && value) return value;
+  }
+  return fallback;
+}
+
+// Codex rollout files emit cumulative token_count snapshots. Store only each
+// positive increase, assigned to the event timestamp and active turn model.
+// The first snapshot (and a counter reset) uses last_token_usage so a forked
+// thread cannot re-count inherited parent usage. Exact snapshots copied across
+// rollout files are de-duplicated without reading transcript text.
+export function collectCodexSessions(sourceDir) {
   const entries = [];
-  for (const file of walkJsonl(sourceDir)) {
+  const roots = sourceDir ? [sourceDir] : defaultCodexSourceDirs();
+  const files = new Set();
+  for (const root of roots) {
+    for (const file of walkJsonl(root)) files.add(path.resolve(file));
+    if (!sourceDir) {
+      const archived = path.join(path.dirname(root), "archived_sessions");
+      for (const file of walkJsonl(archived)) files.add(path.resolve(file));
+    }
+  }
+  const seenUsageSnapshots = new Set();
+  for (const file of files) {
     let text;
     try { text = fs.readFileSync(file, "utf8"); } catch { continue; }
     let sessionId = path.basename(file, ".jsonl");
     let latestTs = "";
     let latestMs = -Infinity;
     let project = "Codex";
+    let model = "unknown";
+    let previousTotal = null;
+    let metadataSeen = false;
+    let tokenEntries = 0;
     for (const line of text.split("\n")) {
       if (!line) continue;
+      // Rollouts can contain very large response/tool payloads. Only these
+      // record types can affect the aggregate, so avoid parsing transcript
+      // content that token-stack neither needs nor publishes.
+      if (!line.includes('"token_count"') && !line.includes('"session_meta"') && !line.includes('"turn_context"') && !line.includes('"thread_settings_applied"')) continue;
       let obj;
       try { obj = JSON.parse(line); } catch { continue; }
       const time = timestampMillis(obj.timestamp);
@@ -159,13 +241,40 @@ export function collectCodexSessions(sourceDir = defaultCodexSourceDir()) {
         latestTs = obj.timestamp;
       }
       if (obj.type === "session_meta") {
+        if (metadataSeen) previousTotal = null;
+        metadataSeen = true;
         const id = [obj.payload?.session_id, obj.payload?.id].find((value) => typeof value === "string" && value);
         const cwd = obj.payload?.cwd;
         if (typeof id === "string" && id) sessionId = id;
-        if (typeof cwd === "string" && cwd) project = path.basename(cwd) || project;
+        project = projectNameFromPath(cwd, project);
+        model = codexModel(obj.payload, model);
       }
+      if (obj.type === "turn_context" || obj.payload?.type === "thread_settings_applied") {
+        project = projectNameFromPath(obj.payload?.cwd, project);
+        model = codexModel(obj.payload, model);
+      }
+      if (obj.payload?.type !== "token_count" || time === null) continue;
+      const total = codexUsageVector(obj.payload?.info?.total_token_usage);
+      if (!total) continue;
+      const last = codexUsageVector(obj.payload?.info?.last_token_usage);
+      const delta = subtractCodexUsage(total, previousTotal);
+      const usage = additiveCodexUsage(delta ?? last ?? (!previousTotal ? total : null));
+      previousTotal = total;
+      if (!usage || usage.input + usage.output + usage.cacheRead + usage.cacheWrite === 0) continue;
+      const snapshot = `${sessionId}|${obj.timestamp}|${total.input}|${total.cacheRead}|${total.cacheWrite}|${total.output}`;
+      if (seenUsageSnapshots.has(snapshot)) continue;
+      seenUsageSnapshots.add(snapshot);
+      entries.push({
+        ts: obj.timestamp,
+        model,
+        ...usage,
+        project,
+        sessionId,
+        agent: "codex",
+      });
+      tokenEntries++;
     }
-    if (!latestTs) continue;
+    if (!latestTs || tokenEntries) continue;
     entries.push({
       ts: latestTs, model: "", input: 0, output: 0, cacheRead: 0, cacheWrite: 0,
       project, sessionId, agent: "codex",
@@ -258,12 +367,17 @@ export function toDayRecords(entries, { timeZone = currentTimeZone() } = {}) {
     const model = typeof e.model === "string" && e.model ? e.model : "unknown";
     const project = typeof e.project === "string" && e.project ? e.project : "unknown";
     const agent = typeof e.agent === "string" && e.agent ? e.agent : "unknown";
+    const storedModel = agent === "codex" ? `codex:${model.replace(/^codex:/, "")}` : model;
     const sessionId = typeof e.sessionId === "string" && e.sessionId ? e.sessionId : null;
     const tokenTotal = positiveNumber(e.input) + positiveNumber(e.output) + positiveNumber(e.cacheRead) + positiveNumber(e.cacheWrite);
-    const day = (days[key] ??= { models: {}, projects: {}, agents: {}, sessions: [], agentSessions: {} });
+    const day = (days[key] ??= { models: {}, projects: {}, agentModels: {}, agentProjects: {}, agents: {}, sessions: [], agentSessions: {} });
     if (tokenTotal > 0) {
-      add((day.models[model] ??= emptyBucket()), e);
+      add((day.models[storedModel] ??= emptyBucket()), e);
       add((day.projects[project] ??= emptyBucket()), e);
+      const agentModels = (day.agentModels[agent] ??= {});
+      const agentProjects = (day.agentProjects[agent] ??= {});
+      add((agentModels[storedModel] ??= emptyBucket()), e);
+      add((agentProjects[project] ??= emptyBucket()), e);
     }
     add((day.agents[agent] ??= emptyBucket()), e);
     if (sessionId && !day.sessions.includes(sessionId)) day.sessions.push(sessionId);
@@ -317,7 +431,49 @@ function recordAgentSessions(rec) {
 
 function recordAgents(rec) {
   const result = { ...(rec?.agents ?? {}) };
-  if (!result["claude-code"] && dayTotal(rec) > 0) result["claude-code"] = legacyAgentBucket(rec);
+  const hasScopedTokens = rec?.agentModels && typeof rec.agentModels === "object" && !Array.isArray(rec.agentModels);
+  if (!hasScopedTokens && !result["claude-code"] && dayTotal(rec) > 0) result["claude-code"] = legacyAgentBucket(rec);
+  return result;
+}
+
+function recordAgentTokenMaps(rec, scopedField, legacyField) {
+  const scoped = rec?.[scopedField];
+  if (scoped && typeof scoped === "object" && !Array.isArray(scoped)) {
+    return Object.fromEntries(Object.entries(scoped).filter(([, value]) => value && typeof value === "object" && !Array.isArray(value)));
+  }
+  const legacy = rec?.[legacyField];
+  return legacy && typeof legacy === "object" && !Array.isArray(legacy) && dayTotal(rec) > 0
+    ? { "claude-code": legacy }
+    : {};
+}
+
+function tokenMapTotal(map) {
+  return Object.values(map ?? {}).reduce((sum, bucket) => sum + positiveNumber(bucket?.total), 0);
+}
+
+function preferredTokenMap(left, right) {
+  if (!left) return right ?? {};
+  if (!right) return left;
+  const leftTotal = tokenMapTotal(left);
+  const rightTotal = tokenMapTotal(right);
+  if (rightTotal !== leftTotal) return rightTotal > leftTotal ? right : left;
+  const count = (map) => Object.values(map).reduce((sum, bucket) => sum + positiveNumber(bucket?.count), 0);
+  return count(right) > count(left) ? right : left;
+}
+
+function mergeAgentTokenMaps(left, right) {
+  const result = {};
+  for (const agent of new Set([...Object.keys(left), ...Object.keys(right)])) {
+    result[agent] = preferredTokenMap(left[agent], right[agent]);
+  }
+  return result;
+}
+
+function combineAgentTokenMaps(scoped) {
+  const result = {};
+  for (const map of Object.values(scoped)) {
+    for (const [name, bucket] of Object.entries(map ?? {})) add((result[name] ??= emptyBucket()), bucket);
+  }
   return result;
 }
 
@@ -334,12 +490,16 @@ export function mergeHistory(history, currentDays) {
   history.days ??= {};
   for (const [day, rec] of Object.entries(currentDays)) {
     const old = history.days[day];
+    const newAgentModels = recordAgentTokenMaps(rec, "agentModels", "models");
+    const newAgentProjects = recordAgentTokenMaps(rec, "agentProjects", "projects");
     if (!old) {
       const agentSessions = recordAgentSessions(rec);
       history.days[day] = {
         ...rec,
-        models: rec.models ?? {},
-        projects: rec.projects ?? {},
+        models: combineAgentTokenMaps(newAgentModels),
+        projects: combineAgentTokenMaps(newAgentProjects),
+        agentModels: newAgentModels,
+        agentProjects: newAgentProjects,
         agents: recordAgents(rec),
         agentSessions,
         sessions: [...new Set([...(rec.sessions ?? []), ...Object.values(agentSessions).flat()])],
@@ -347,7 +507,10 @@ export function mergeHistory(history, currentDays) {
       continue;
     }
 
-    const tokenSource = dayTotal(rec) >= dayTotal(old) ? rec : old;
+    const oldAgentModels = recordAgentTokenMaps(old, "agentModels", "models");
+    const oldAgentProjects = recordAgentTokenMaps(old, "agentProjects", "projects");
+    const agentModels = mergeAgentTokenMaps(oldAgentModels, newAgentModels);
+    const agentProjects = mergeAgentTokenMaps(oldAgentProjects, newAgentProjects);
     const oldSessions = recordAgentSessions(old);
     const newSessions = recordAgentSessions(rec);
     const agentSessions = {};
@@ -361,9 +524,12 @@ export function mergeHistory(history, currentDays) {
       agents[agent] = preferredBucket(oldAgents[agent], newAgents[agent]);
     }
     history.days[day] = {
-      ...tokenSource,
-      models: tokenSource.models ?? {},
-      projects: tokenSource.projects ?? {},
+      ...old,
+      ...rec,
+      models: combineAgentTokenMaps(agentModels),
+      projects: combineAgentTokenMaps(agentProjects),
+      agentModels,
+      agentProjects,
       agents,
       agentSessions,
       sessions: [...new Set([...(old.sessions ?? []), ...(rec.sessions ?? []), ...Object.values(agentSessions).flat()])],
@@ -379,11 +545,15 @@ export function filterHistoryByProvider(history, provider) {
   for (const [day, rec] of Object.entries(history.days ?? {})) {
     const sessions = recordAgentSessions(rec)[agent] ?? [];
     const agentBucket = recordAgents(rec)[agent];
-    const tokenBearing = agent === "claude-code" && dayTotal(rec) > 0;
+    const models = recordAgentTokenMaps(rec, "agentModels", "models")[agent] ?? {};
+    const projects = recordAgentTokenMaps(rec, "agentProjects", "projects")[agent] ?? {};
+    const tokenBearing = tokenMapTotal(models) > 0;
     if (!tokenBearing && !sessions.length && !agentBucket) continue;
     days[day] = {
-      models: tokenBearing ? rec.models ?? {} : {},
-      projects: tokenBearing ? rec.projects ?? {} : {},
+      models: tokenBearing ? models : {},
+      projects: tokenBearing ? projects : {},
+      agentModels: tokenBearing ? { [agent]: models } : {},
+      agentProjects: tokenBearing ? { [agent]: projects } : {},
       agents: agentBucket ? { [agent]: agentBucket } : {},
       sessions: [...sessions],
       agentSessions: sessions.length ? { [agent]: [...sessions] } : {},
@@ -543,7 +713,18 @@ export function aggregate(history, { days = 30 } = {}) {
         cost += bucketCost(model, b);
       }
     }
-    byDay.push({ date: key, total, cost });
+    const sessionIds = new Set(Object.values(recordAgentSessions(rec)).flat());
+    const activeProjects = Object.values(recordAgentTokenMaps(rec, "agentProjects", "projects"))
+      .reduce((names, projects) => {
+        for (const [name, bucket] of Object.entries(projects ?? {})) {
+          if (positiveNumber(bucket?.total) > 0) names.add(name);
+        }
+        return names;
+      }, new Set());
+    const activeAgents = Object.entries(recordAgents(rec))
+      .filter(([, bucket]) => positiveNumber(bucket?.count) > 0 || positiveNumber(bucket?.total) > 0)
+      .length;
+    byDay.push({ date: key, total, cost, sessions: sessionIds.size, projects: activeProjects.size, agents: activeAgents });
   }
 
   // Streak of consecutive active days ending today (or yesterday).
@@ -555,16 +736,24 @@ export function aggregate(history, { days = 30 } = {}) {
     else break;
   }
 
-  const sortDesc = (map) =>
+  const sortDesc = (map, { models = false } = {}) =>
     [...map.entries()]
-      .map(([name, v]) => ({ name, ...v, cost: bucketCost(name, v) }))
+      .map(([name, v]) => {
+        const codex = models && name.startsWith("codex:");
+        return {
+          name: codex ? name.slice("codex:".length) : name,
+          ...(codex ? { provider: "codex" } : {}),
+          ...v,
+          cost: bucketCost(name, v),
+        };
+      })
       .sort((a, b) => b.total - a.total);
 
   const sessionCount = [...agentSessionSets.values()].reduce((sum, ids) => sum + ids.size, 0);
   return {
     generatedAt: new Date().toISOString(),
     totals,
-    byModel: sortDesc(byModel),
+    byModel: sortDesc(byModel, { models: true }),
     byProject: [...byProject.entries()]
       .map(([name, v]) => ({ name, ...v }))
       .sort((a, b) => b.total - a.total),

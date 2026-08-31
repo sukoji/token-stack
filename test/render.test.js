@@ -58,7 +58,7 @@ test("skyline chart renders a night city for compact and activity cards", () => 
   assert.match(activity, /BUILDING HEIGHT/);
   assert.match(activity, /DAILY TOKENS/);
   assert.match(activity, /CITY DENSITY/);
-  assert.match(activity, /GREEN ROUTE/);
+  assert.match(activity, /STREAK · SESSIONS \/ PROJECTS/);
   assert.match(activity, /class="f skyline-header-metrics"[^>]+data-window-tokens="19300000"[^>]+data-window-cost="9.00"[^>]+data-window-days="5"/);
   assert.match(activity, />TOKENS<|>EST\. COST<|>WINDOW</);
   assert.match(activity, /class="f skyline-greenway"[^>]+data-token-streak="4"/);
@@ -80,6 +80,58 @@ test("classic skyline remains available without cinematic material layers", () =
   assert.doesNotMatch(classic, /skyline-horizon-glow|skyline-far-building|skyline-district-building|skyline-district-plane|skyline-near-haze|skylineRearDepth|skyline-edge-light|skylineMaterial|skyline-grain/);
   assert.doesNotMatch(classic, /skyline-architecture|data-building-reflection/);
   assert.throws(() => renderActivity(stats, { anim: false, chart: "skyline", skylineStyle: "photoreal" }), /Unknown skyline style/);
+});
+
+test("skyline palettes, bases, and metric-driven street life are composable", () => {
+  const stats = {
+    totals: { total: 4_200_000, cost: 2, input: 4_200_000, output: 0, cacheRead: 0, cacheWrite: 0 },
+    byDay: [
+      { date: "2026-07-01", total: 400_000, cost: 0, sessions: 1, projects: 1, agents: 1 },
+      { date: "2026-07-02", total: 900_000, cost: 0, sessions: 3, projects: 2, agents: 2 },
+      { date: "2026-07-03", total: 2_900_000, cost: 0, sessions: 5, projects: 3, agents: 2 },
+    ],
+    streak: 3,
+  };
+  const defaults = renderActivity(stats, { anim: true, chart: "skyline", sky: "day" });
+  const explicitDefaults = renderActivity(stats, { anim: true, chart: "skyline", sky: "day", cityPalette: "natural", cityBase: "waterfront", cityMotion: "auto" });
+  assert.equal(defaults, explicitDefaults);
+  assert.match(defaults, /data-city-palette="natural" data-city-base="waterfront" data-city-motion="auto"/);
+  assert.match(defaults, /class="skyline-street-life" data-recent-sessions="9" data-active-projects="3" data-vehicles="4" data-pedestrians="4"/);
+  assert.match(defaults, /@keyframes skylineVehicleFlow/);
+  assert.match(defaults, /Street traffic reflects 9 sessions in the latest 3 days; pedestrians reflect up to 3 active projects per day\./);
+
+  const paletteSvgs = ["natural", "graphite", "copper", "evergreen"].map((cityPalette) =>
+    renderActivity(stats, { anim: false, chart: "skyline", sky: "day", cityPalette }));
+  assert.equal(new Set(paletteSvgs).size, 4);
+  for (const [index, name] of ["natural", "graphite", "copper", "evergreen"].entries()) {
+    assert.match(paletteSvgs[index], new RegExp(`data-city-palette="${name}"`));
+  }
+
+  const park = renderActivity(stats, { anim: false, chart: "skyline", sky: "day", cityBase: "park" });
+  assert.match(park, /data-city-base="park"/);
+  assert.match(park, /class="skyline-street skyline-park"/);
+  assert.doesNotMatch(park, /class="skyline-water"|class="skyline-reflected-city"|skylineReflectionMask/);
+  const transit = renderActivity(stats, { anim: true, chart: "skyline", sky: "night", cityBase: "transit" });
+  assert.match(transit, /class="skyline-street skyline-transit"/);
+  assert.match(transit, /class="skyline-vehicle-flow"/);
+  assert.doesNotMatch(transit, /class="skyline-water"|class="skyline-reflected-city"/);
+  const still = renderActivity(stats, { anim: true, chart: "skyline", cityMotion: "off" });
+  assert.doesNotMatch(still, /skyline-street-life|skylineVehicleFlow|skylinePedestrianFlow/);
+
+  assert.throws(() => renderActivity(stats, { chart: "skyline", cityPalette: "neon" }), /Unknown city palette/);
+  assert.throws(() => renderActivity(stats, { chart: "skyline", cityBase: "ocean" }), /Unknown city base/);
+  assert.throws(() => renderActivity(stats, { chart: "skyline", cityMotion: "fast" }), /Unknown city motion/);
+});
+
+test("mixed Claude and Codex totals label the priced portion as a Claude estimate", () => {
+  const stats = {
+    totals: { total: 1000, cost: 1, input: 1000, output: 0, cacheRead: 0, cacheWrite: 0 },
+    byDay: [{ date: "2026-07-01", total: 1000, cost: 1 }],
+    byAgent: [{ name: "codex", total: 500 }, { name: "claude-code", total: 500 }],
+    streak: 1,
+  };
+  assert.match(renderActivity(stats, { anim: false, chart: "skyline" }), />CLAUDE EST\.<\/text>/);
+  assert.match(renderSummaryCompact(stats, { anim: false }), /Claude est\. \$1\.00/);
 });
 
 test("animated skyline grows its facade and windows from the street upward", () => {

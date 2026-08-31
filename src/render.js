@@ -12,6 +12,10 @@ export function formatCost(n) {
   return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function hasUnpricedCodex(stats) {
+  return (stats?.byAgent ?? []).some((agent) => agent.name === "codex" && agent.total > 0);
+}
+
 const esc = (s) =>
   String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -20,23 +24,32 @@ const escAttr = (s) =>
 
 function safeDays(days) {
   const source = Array.isArray(days) ? days : [];
-  if (!source.length) return [{ date: "", total: 0, cost: 0 }];
+  if (!source.length) return [{ date: "", total: 0, cost: 0, sessions: 0, projects: 0, agents: 0 }];
   return source.map((day) => ({
     date: String(day?.date ?? ""),
     total: Number.isFinite(day?.total) && day.total > 0 ? day.total : 0,
     cost: Number.isFinite(day?.cost) && day.cost > 0 ? day.cost : 0,
+    sessions: Number.isFinite(day?.sessions) && day.sessions > 0 ? Math.floor(day.sessions) : 0,
+    projects: Number.isFinite(day?.projects) && day.projects > 0 ? Math.floor(day.projects) : 0,
+    agents: Number.isFinite(day?.agents) && day.agents > 0 ? Math.floor(day.agents) : 0,
   }));
 }
 
-// Skyline is deliberately token-only: Claude Code is the only supported
-// provider whose local records expose comparable billed token fields. Keep
-// its explanatory signals tied to the same daily token series as the building
-// geometry instead of reusing the cross-provider session streak.
+// Skyline token geometry uses only providers with locally observable token
+// fields. Session/project signals remain separate and drive subtle street
+// life rather than being misrepresented as building volume.
 function citySignals(days, sourceDayCount) {
   const windowDays = Math.max(0, Number.isInteger(sourceDayCount) ? sourceDayCount : days.length);
   const activeDays = days.filter((day) => day.total > 0).length;
   const windowTotal = days.reduce((sum, day) => sum + day.total, 0);
   const peak = Math.max(...days.map((day) => day.total), 0);
+  const recentDays = days.slice(-Math.min(7, days.length));
+  const recentSessions = recentDays.reduce((sum, day) => sum + day.sessions, 0);
+  const projectBreadth = Math.max(...recentDays.map((day) => day.projects), 0);
+  const agentBreadth = Math.max(...recentDays.map((day) => day.agents), 0);
+  const trafficLevel = recentSessions ? clamp(Math.log1p(recentSessions) / Math.log1p(18), 0, 1) : 0;
+  const vehicleCount = recentSessions ? clamp(Math.round(1 + trafficLevel * 4), 1, 5) : 0;
+  const pedestrianCount = projectBreadth ? clamp(projectBreadth + Math.max(0, agentBreadth - 1), 1, 5) : 0;
   let tokenStreak = 0;
   for (let index = days.length - 1; index >= 0 && days[index].total > 0; index--) tokenStreak++;
 
@@ -64,11 +77,14 @@ function citySignals(days, sourceDayCount) {
       `${activeDays}/${windowDays} ACTIVE`,
       tokenStreak ? `${tokenStreakDisplay}D STREAK` : "NO STREAK",
     ].join(" · ");
+  const mobilityDescription = recentSessions || projectBreadth
+    ? ` Street traffic reflects ${recentSessions} sessions in the latest ${recentDays.length} days; pedestrians reflect up to ${projectBreadth} active projects per day.`
+    : "";
   const description = !windowDays
     ? "Building height represents daily tokens. Layered city density represents sustained token activity. No token days were supplied for this window."
     : !activeDays
       ? `Building height represents daily tokens. Layered city density represents sustained token activity. This ${windowDays}-day window has no token-active days.`
-      : `Building height represents daily tokens. Layered city density represents sustained token activity. This ${windowDays}-day window has ${activeDays} token-active days. Its token rhythm is ${rhythmLabel.toLowerCase()}. ${streakDescription}`;
+      : `Building height represents daily tokens. Layered city density represents sustained token activity. This ${windowDays}-day window has ${activeDays} token-active days. Its token rhythm is ${rhythmLabel.toLowerCase()}. ${streakDescription}${mobilityDescription}`;
 
   return {
     windowDays,
@@ -79,6 +95,12 @@ function citySignals(days, sourceDayCount) {
     rhythm: rhythmLabel.toLowerCase().replaceAll(" ", "-"),
     readout,
     description,
+    recentSessions,
+    projectBreadth,
+    agentBreadth,
+    trafficLevel,
+    vehicleCount,
+    pedestrianCount,
   };
 }
 
@@ -102,7 +124,7 @@ function styles({ anim, speed }, extra = "") {
 .by{transform:scaleY(0);transform-box:fill-box;transform-origin:center bottom;animation:gy ${s(0.8)} cubic-bezier(.2,.6,.2,1) forwards}
 @keyframes gy{to{transform:scaleY(1)}}
 ${extra}
-@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}.sky-star{animation:none!important;opacity:.3!important;transform:none!important}.skyline-cloud-bank,.skyline-horizon-haze,.skyline-window-glint,.skyline-water-ripple{animation:none!important;transform:none!important}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}.sky-star{animation:none!important;opacity:.3!important;transform:none!important}.skyline-cloud-bank,.skyline-horizon-haze,.skyline-window-glint,.skyline-water-ripple{animation:none!important;transform:none!important}.skyline-vehicle-flow,.skyline-pedestrian-flow{animation:none!important;transform:none!important}}
 </style>`;
 }
 
@@ -239,6 +261,32 @@ function skylineMix(color, target, amount) {
   return `#${from.map((channel, index) => Math.round(channel + (to[index] - channel) * amount).toString(16).padStart(2, "0")).join("")}`;
 }
 
+const CITY_PALETTES = ["natural", "graphite", "copper", "evergreen"];
+const CITY_BASES = ["waterfront", "park", "transit"];
+const CITY_MOTIONS = ["auto", "off"];
+
+function resolveCityPalette(phase, preset) {
+  if (!CITY_PALETTES.includes(preset)) throw new Error(`Unknown city palette "${preset}". Available: ${CITY_PALETTES.join(", ")}`);
+  if (preset === "natural") return phase;
+  const settings = {
+    graphite: { sky: "#8995a2", skyMix: .3, building: "#4d5863", buildingMix: .48, field: "#58636a", window: "#e6edf2" },
+    copper: { sky: "#c89b83", skyMix: .22, building: "#9a5942", buildingMix: .42, field: "#756448", window: "#ffd7a0" },
+    evergreen: { sky: "#77989a", skyMix: .2, building: "#395f58", buildingMix: .4, field: "#365d47", window: "#d8e8be" },
+  }[preset];
+  const mixPalette = (palette) => Object.fromEntries(Object.entries(palette).map(([tier, colors]) => [
+    tier,
+    colors.map((color) => skylineMix(color, settings.building, settings.buildingMix)),
+  ]));
+  return {
+    ...phase,
+    sky: phase.sky.map((color, index) => skylineMix(color, settings.sky, settings.skyMix * (index === 2 ? .7 : 1))),
+    field: skylineMix(phase.field, settings.field, .5),
+    grass: skylineMix(phase.grass, settings.field, .28),
+    window: skylineMix(phase.window, settings.window, .34),
+    palette: mixPalette(phase.palette),
+  };
+}
+
 function skylineLandmarkMetrics(shape, width, height) {
   const spire = Math.min(height * .18, Math.max(6, width * .48), 15);
   const step = Math.min(height * .11, Math.max(3.2, width * .18), 7);
@@ -308,14 +356,28 @@ function skylineShape(tier, shape, x, width, base, height) {
   ][shape % 5];
 }
 
-function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, tokenStreak = 0, skylineStyle = "cinematic" } = {}) {
+function chartSkylineContinuous(days, t, box, {
+  anim,
+  speed,
+  sky = "auto",
+  now,
+  tokenStreak = 0,
+  skylineStyle = "cinematic",
+  cityPalette = "natural",
+  cityBase = "waterfront",
+  cityMotion = "auto",
+  mobility = {},
+} = {}) {
   const { x, y, w, h } = box;
   const resolvedPhase = resolveSkyPhase(sky, now);
   if (!["cinematic", "classic"].includes(skylineStyle)) throw new Error(`Unknown skyline style "${skylineStyle}". Available: cinematic, classic`);
+  if (!CITY_BASES.includes(cityBase)) throw new Error(`Unknown city base "${cityBase}". Available: ${CITY_BASES.join(", ")}`);
+  if (!CITY_MOTIONS.includes(cityMotion)) throw new Error(`Unknown city motion "${cityMotion}". Available: ${CITY_MOTIONS.join(", ")}`);
   const cinematic = skylineStyle !== "classic";
-  const phase = cinematic && resolvedPhase.name === "day"
+  const basePhase = cinematic && resolvedPhase.name === "day"
     ? { name: resolvedPhase.name, ...CINEMATIC_DAY_PHASE }
     : resolvedPhase;
+  const phase = resolveCityPalette(basePhase, cityPalette);
   const detail = w >= 390 && h >= 95;
   const boundedTokenStreak = Number.isFinite(tokenStreak)
     ? clamp(Math.floor(tokenStreak), 0, days.length)
@@ -392,13 +454,14 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
     return Math.max(peak, cluster.strength * Math.max(0, 1 - distance) ** 1.35);
   }, 0);
   const nightscape = phase.name === "night" || phase.name === "dusk";
-  // Cinematic cities always sit on a waterfront. The deeper foreground plane
-  // gives the skyline room for a recognizable mirrored silhouette instead of
-  // a decorative one-pixel reflection strip.
-  const waterDepth = cinematic
+  // Every cinematic base reserves the same foreground depth so changing the
+  // environment does not unexpectedly stretch or shrink the skyline.
+  const sceneDepth = cinematic
     ? (detail ? Math.max(25, Math.round(h * .22)) : Math.max(12, Math.round(h * .18)))
     : nightscape ? (detail ? 15 : 9) : 0;
-  const base = y + h - (waterDepth || (detail ? 7 : 5));
+  const waterDepth = cityBase === "waterfront" ? sceneDepth : 0;
+  const groundDepth = cinematic ? sceneDepth : (waterDepth || (detail ? 7 : 5));
+  const base = y + h - groundDepth;
   const cityCeiling = Math.max(detail ? 44 : 27, base - y - 5);
   const lots = clamp(
     Math.round(days.length * (detail ? 1.08 : 1.2)),
@@ -833,9 +896,35 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
     const stoneR = .22 + skylineHash(index * 101 + 7) * .45;
     return `<circle cx="${stoneX.toFixed(1)}" cy="${stoneY.toFixed(1)}" r="${stoneR.toFixed(2)}" fill="${index % 3 ? phase.grass : phase.window}" fill-opacity="${index % 3 ? ".48" : ".28"}"/>`;
   }).join("") : "";
-  const street = waterDepth
-    ? `<g class="skyline-street skyline-shore"><rect x="${x}" y="${base - 2.2}" width="${w}" height="3.4" fill="${skylineMix(phase.grass, "#17232a", .52)}" fill-opacity=".92"/><path d="M${x} ${base}H${x + w}" stroke="${phase.window}" stroke-opacity=".62" stroke-width=".8"/>${shoreTexture}${Array.from({ length: Math.floor(w / 58) }, (_, i) => { const sx = x + 20 + i * 58; return `<circle class="skyline-shore-light" cx="${sx}" cy="${base - 1}" r=".9" fill="${phase.window}" fill-opacity=".76"/><path d="M${sx - 3} ${base + 2}h6" stroke="${phase.window}" stroke-opacity=".23" stroke-width=".6"/>`; }).join("")}</g>`
-    : `<path class="skyline-street" d="M${x} ${base - 2}H${x + w}V${y + h}H${x}Z" fill="#18232d" fill-opacity=".78"/><path d="M${x} ${base + 1}H${x + w}" stroke="${phase.window}" stroke-opacity=".52" stroke-dasharray="9 7" stroke-width=".7"/>${Array.from({ length: Math.floor(w / 62) }, (_, i) => { const sx = x + 24 + i * 62; return `<path d="M${sx} ${base - 2}v-8m-2 0h4" stroke="${phase.window}" stroke-opacity=".56" stroke-width=".8"/><circle cx="${sx}" cy="${base - 11}" r="1.1" fill="${phase.window}" fill-opacity=".9"/>`; }).join("")}`;
+  const street = cityBase === "park"
+    ? `<g class="skyline-street skyline-park"><rect x="${x}" y="${base - 2}" width="${w}" height="${y + h - base + 2}" fill="${skylineMix(phase.field, "#172d25", .28)}"/><path d="M${x} ${base + 4}C${x + w * .28} ${base + 1},${x + w * .68} ${base + 10},${x + w} ${base + 5}" stroke="${skylineMix(phase.grass, "#ded7bd", .62)}" stroke-width="3.2" fill="none" stroke-opacity=".82"/>${Array.from({ length: Math.floor(w / 70) }, (_, i) => { const tx = x + 28 + i * 70; return `<path d="M${tx} ${base + 5}v-8" stroke="#33473c" stroke-width="1"/><circle cx="${tx}" cy="${base - 4}" r="3.2" fill="${phase.grass}" fill-opacity=".78"/>`; }).join("")}</g>`
+    : waterDepth
+      ? `<g class="skyline-street skyline-shore"><rect x="${x}" y="${base - 2.2}" width="${w}" height="3.4" fill="${skylineMix(phase.grass, "#17232a", .52)}" fill-opacity=".92"/><path d="M${x} ${base}H${x + w}" stroke="${phase.window}" stroke-opacity=".62" stroke-width=".8"/>${shoreTexture}${Array.from({ length: Math.floor(w / 58) }, (_, i) => { const sx = x + 20 + i * 58; return `<circle class="skyline-shore-light" cx="${sx}" cy="${base - 1}" r=".9" fill="${phase.window}" fill-opacity=".76"/><path d="M${sx - 3} ${base + 2}h6" stroke="${phase.window}" stroke-opacity=".23" stroke-width=".6"/>`; }).join("")}</g>`
+      : `<g class="skyline-street skyline-transit"><path d="M${x} ${base - 2}H${x + w}V${y + h}H${x}Z" fill="#18232d" fill-opacity=".92"/><path d="M${x} ${base + 2}H${x + w}M${x} ${base + 8}H${x + w}" stroke="${phase.window}" stroke-opacity=".38" stroke-dasharray="12 8" stroke-width=".75"/><path d="M${x} ${base + 13}H${x + w}" stroke="#080d12" stroke-opacity=".82" stroke-width="2.2"/>${Array.from({ length: Math.floor(w / 62) }, (_, i) => { const sx = x + 24 + i * 62; return `<path d="M${sx} ${base - 2}v-8m-2 0h4" stroke="${phase.window}" stroke-opacity=".56" stroke-width=".8"/><circle cx="${sx}" cy="${base - 11}" r="1.1" fill="${phase.window}" fill-opacity=".9"/>`; }).join("")}</g>`;
+  const vehicleCount = cityMotion === "auto" && detail && cityBase !== "park"
+    ? clamp(Math.floor(Number(mobility.vehicleCount) || 0), 0, 5)
+    : 0;
+  const pedestrianCount = cityMotion === "auto" && detail
+    ? clamp(Math.floor(Number(mobility.pedestrianCount) || 0), 0, 5)
+    : 0;
+  const vehicleY = cityBase === "transit" ? base + 4.2 : base - 4.1;
+  const vehicles = Array.from({ length: vehicleCount }, (_, index) => {
+    const actorX = x + 8 + skylineHash(index * 73 + 17) * Math.max(12, w - 28);
+    const duration = (18 - (Number(mobility.trafficLevel) || 0) * 5 + skylineHash(index * 41 + 7) * 5) / speed;
+    const actorStyle = anim ? ` style="animation-delay:${(-skylineHash(index * 89 + 13) * duration).toFixed(2)}s;animation-duration:${duration.toFixed(2)}s"` : "";
+    const bodyColor = ["#d9a35f", "#b75e51", "#6f9aae", "#d8d1bd", "#6f8066"][index % 5];
+    return `<g transform="translate(${actorX.toFixed(1)} ${vehicleY.toFixed(1)})"><g class="skyline-vehicle-flow"${actorStyle}><rect x="-3" y="-1.5" width="6" height="2.3" rx=".7" fill="${bodyColor}"/><path d="M-1.7 -1.5L-.7 -2.5H1.1L2.1 -1.5" fill="${skylineMix(bodyColor, "#dce7ec", .3)}"/><circle cx="-1.8" cy="1" r=".55" fill="#090d12"/><circle cx="1.9" cy="1" r=".55" fill="#090d12"/><circle cx="3.1" cy="-.55" r=".38" fill="${phase.window}"/></g></g>`;
+  }).join("");
+  const pedestrianY = cityBase === "park" ? base + 4 : base - 4.4;
+  const pedestrians = Array.from({ length: pedestrianCount }, (_, index) => {
+    const actorX = x + 12 + skylineHash(index * 97 + 31) * Math.max(10, w - 24);
+    const duration = (24 + skylineHash(index * 53 + 11) * 12) / speed;
+    const actorStyle = anim ? ` style="animation-delay:${(-skylineHash(index * 109 + 23) * duration).toFixed(2)}s;animation-duration:${duration.toFixed(2)}s"` : "";
+    return `<g transform="translate(${actorX.toFixed(1)} ${pedestrianY.toFixed(1)})"><g class="skyline-pedestrian-flow"${actorStyle}><circle cy="-2.4" r=".7" fill="${phase.window}"/><path d="M0 -1.7V1.1M0 -.3l-1 1.2M0 -.3l1 1M0 1.1l-.8 1.4M0 1.1l.9 1.35" stroke="${index % 2 ? "#d3b181" : "#9eb9c5"}" stroke-width=".62" stroke-linecap="round"/></g></g>`;
+  }).join("");
+  const streetLife = vehicleCount || pedestrianCount
+    ? `<g class="skyline-street-life" data-recent-sessions="${Math.max(0, Math.floor(Number(mobility.recentSessions) || 0))}" data-active-projects="${Math.max(0, Math.floor(Number(mobility.projectBreadth) || 0))}" data-vehicles="${vehicleCount}" data-pedestrians="${pedestrianCount}"><title>Traffic reflects recent sessions; pedestrians reflect active projects.</title>${vehicles}${pedestrians}</g>`
+    : "";
   const greenway = detail && boundedTokenStreak
     ? (() => {
       const start = x + w * (1 - boundedTokenStreak / days.length);
@@ -861,11 +950,12 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
   const middleCity = cinematic ? `<g class="skyline-district-plane skyline-district-plane-middle" filter="url(#skylineMiddleDepth)">${districtLayers[1].join("")}</g>` : districtLayers[1].join("");
   const cityMass = `<g id="skylineCityMass">${rearCity}${aerialHaze}${middleCity}${nearHaze}${fabric}<g class="skyline-foreground"${foregroundFilter}>${foreground.join("")}</g></g>`;
   const cityReflection = cinematic && waterDepth ? `<g class="skyline-reflected-city" mask="url(#skylineReflectionMask)" filter="url(#skylineReflectionRipple)" opacity="${phase.name === "day" ? ".38" : ".44"}"><use href="#skylineCityMass" transform="translate(0 ${(2 * base + .7).toFixed(1)}) scale(1 -1)"/></g>` : "";
-  const svg = `<defs><linearGradient id="skylineSky" x1="0" y1="0" x2="0" y2="1">${skyStops}</linearGradient><linearGradient id="skylineWater" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${waterColors[0]}"/><stop offset=".55" stop-color="${cinematic ? skylineMix(waterColors[0], phase.sky[1], .2) : waterColors[0]}"/><stop offset="1" stop-color="${waterColors[1]}"/></linearGradient><radialGradient id="skylineLuminary"><stop stop-color="#fffde1"/><stop offset=".55" stop-color="${phase.luminary}"/><stop offset="1" stop-color="${skylineMix(phase.luminary, phase.sky[1], .18)}"/></radialGradient>${cinematicDefs}${depthDefs}${reflectionDefs}${defs.join("")}</defs><g clip-path="url(#skylineScene)"><rect data-sky="${phase.name}" data-skyline-style="${cinematic ? "cinematic" : "classic"}" data-city-scale="${cityScale.toFixed(3)}" data-cluster-count="${clusterCount}" x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="url(#skylineSky)"/>${horizonGlow}${atmosphericDust}${clouds}${stars}${moonHalo}${luminaryGlow}<circle class="f skyline-luminary" style="${delay(2, .12, speed)}" cx="${luminaryX}" cy="${luminaryY}" r="${luminaryR}" fill="url(#skylineLuminary)"/>${cityDepth}${cityMass}${water}${cityReflection}${reflections.join("")}${street}${greenway}${vignette}${grain}</g>`;
+  const svg = `<defs><linearGradient id="skylineSky" x1="0" y1="0" x2="0" y2="1">${skyStops}</linearGradient><linearGradient id="skylineWater" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${waterColors[0]}"/><stop offset=".55" stop-color="${cinematic ? skylineMix(waterColors[0], phase.sky[1], .2) : waterColors[0]}"/><stop offset="1" stop-color="${waterColors[1]}"/></linearGradient><radialGradient id="skylineLuminary"><stop stop-color="#fffde1"/><stop offset=".55" stop-color="${phase.luminary}"/><stop offset="1" stop-color="${skylineMix(phase.luminary, phase.sky[1], .18)}"/></radialGradient>${cinematicDefs}${depthDefs}${reflectionDefs}${defs.join("")}</defs><g clip-path="url(#skylineScene)"><rect data-sky="${phase.name}" data-skyline-style="${cinematic ? "cinematic" : "classic"}" data-city-palette="${cityPalette}" data-city-base="${cityBase}" data-city-motion="${cityMotion}" data-city-scale="${cityScale.toFixed(3)}" data-cluster-count="${clusterCount}" x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="url(#skylineSky)"/>${horizonGlow}${atmosphericDust}${clouds}${stars}${moonHalo}${luminaryGlow}<circle class="f skyline-luminary" style="${delay(2, .12, speed)}" cx="${luminaryX}" cy="${luminaryY}" r="${luminaryR}" fill="url(#skylineLuminary)"/>${cityDepth}${cityMass}${water}${cityReflection}${reflections.join("")}${street}${streetLife}${greenway}${vignette}${grain}</g>`;
   const starCss = phase.stars ? `.sky-star{opacity:.18;animation:skylineStarTwinkle ${starCycle.toFixed(2)}s ease-in-out infinite}@keyframes skylineStarTwinkle{0%,100%{opacity:.16}50%{opacity:.52}}` : "";
   const atmosphereCss = cinematic ? `.skyline-cloud-bank{animation:skylineCloudDrift ${(24 / speed).toFixed(2)}s ease-in-out infinite alternate;transform-origin:center}@keyframes skylineCloudDrift{to{transform:translateX(${detail ? "6px" : "3px"})}}.skyline-horizon-haze{animation:skylineHazePulse ${(8 / speed).toFixed(2)}s ease-in-out infinite}@keyframes skylineHazePulse{50%{opacity:.72}}` : "";
   const ambientCss = cinematic ? `.skyline-water-ripple{animation-name:skylineWaterDrift;animation-timing-function:ease-in-out;animation-iteration-count:infinite;transform-box:fill-box;transform-origin:center}@keyframes skylineWaterDrift{0%,100%{opacity:.62;transform:translateX(-2px)}50%{opacity:1;transform:translateX(${detail ? "5px" : "3px"})}}${nightscape ? `.skyline-window-glint{animation-name:skylineWindowGlint;animation-timing-function:ease-in-out;animation-iteration-count:infinite}@keyframes skylineWindowGlint{0%,72%,88%,100%{opacity:1}80%{opacity:.32}84%{opacity:.82}}` : ""}` : "";
-  const extraCss = anim ? `${starCss}${atmosphereCss}${ambientCss}.skyline-fabric{opacity:0;animation:fu ${(0.7 / speed).toFixed(2)}s cubic-bezier(.4,0,.2,1) forwards}.skyline-building-grow{clip-path:inset(100% 0 0 0) fill-box;animation:skylineBuildingGrow ${(0.8 / speed).toFixed(2)}s cubic-bezier(.2,.6,.2,1) forwards}@keyframes skylineBuildingGrow{to{clip-path:inset(0 0 0 0) fill-box}}` : "";
+  const mobilityCss = streetLife ? `.skyline-vehicle-flow{animation-name:skylineVehicleFlow;animation-timing-function:linear;animation-iteration-count:infinite}@keyframes skylineVehicleFlow{from{transform:translateX(-${(w + 20).toFixed(0)}px)}to{transform:translateX(${(w + 20).toFixed(0)}px)}}.skyline-pedestrian-flow{animation-name:skylinePedestrianFlow;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}@keyframes skylinePedestrianFlow{from{transform:translateX(-18px)}to{transform:translateX(18px)}}` : "";
+  const extraCss = anim ? `${starCss}${atmosphereCss}${ambientCss}${mobilityCss}.skyline-fabric{opacity:0;animation:fu ${(0.7 / speed).toFixed(2)}s cubic-bezier(.4,0,.2,1) forwards}.skyline-building-grow{clip-path:inset(100% 0 0 0) fill-box;animation:skylineBuildingGrow ${(0.8 / speed).toFixed(2)}s cubic-bezier(.2,.6,.2,1) forwards}@keyframes skylineBuildingGrow{to{clip-path:inset(0 0 0 0) fill-box}}` : "";
   return { svg, extraCss };
 }
 
@@ -879,6 +969,7 @@ export function renderSummaryCompact(stats, opts = {}) {
   const t = resolveTheme(opts.theme);
   const W = 340, H = 200;
   const { totals } = stats;
+  const costLabel = hasUnpricedCodex(stats) ? "Claude est." : "est.";
   const sourceDays = Array.isArray(stats.byDay) ? stats.byDay : [];
   const days = safeDays(sourceDays);
   const signals = chart === "skyline" ? citySignals(days, sourceDays.length) : null;
@@ -893,6 +984,10 @@ export function renderSummaryCompact(stats, opts = {}) {
     now: opts.now,
     tokenStreak: signals?.tokenStreak,
     skylineStyle: opts.skylineStyle,
+    cityPalette: opts.cityPalette,
+    cityBase: opts.cityBase,
+    cityMotion: opts.cityMotion,
+    mobility: signals,
   });
 
   const windowTotal = days.reduce((a, d) => a + d.total, 0);
@@ -903,7 +998,7 @@ export function renderSummaryCompact(stats, opts = {}) {
 <g font-family="'Segoe UI',Ubuntu,Sans-Serif">
 <text class="f" x="20" y="27" font-size="14" font-weight="600" fill="${t.title}">⚡ ${esc(title)}</text>
 <text class="f" style="${delay(1, 0.12, speed)}" x="20" y="66" font-size="30" font-weight="800" fill="url(#big)">${formatTokens(totals.total)}</text>
-<text class="f" style="${delay(2, 0.12, speed)}" x="20" y="85" font-size="10.5" fill="${t.subtext}">tokens all time · est. ${formatCost(totals.cost)} · 🔥 ${signals ? signals.tokenStreakDisplay : stats.streak}d ${signals ? "token " : ""}streak</text>
+<text class="f" style="${delay(2, 0.12, speed)}" x="20" y="85" font-size="10.5" fill="${t.subtext}">tokens all time · ${costLabel} ${formatCost(totals.cost)} · 🔥 ${signals ? signals.tokenStreakDisplay : stats.streak}d ${signals ? "token " : ""}streak</text>
 <text class="f" style="${delay(3, 0.12, speed)}" x="${W - 20}" y="97" font-size="9.5" text-anchor="end" fill="${t.subtext}">last ${sourceDays.length}d · ${formatTokens(windowTotal)}</text>
 ${chartSvg}
 <text class="f" style="${delay(8, 0.12, speed)}" x="20" y="${H - 10}" font-size="9.5" fill="${t.subtext}">in ${formatTokens(totals.input)} · out ${formatTokens(totals.output)} · cache ${formatTokens(totals.cacheRead + totals.cacheWrite)}</text>
@@ -913,10 +1008,11 @@ ${chartSvg}
 
 export function renderSummary(stats, opts = {}) {
   if (opts.compact) return renderSummaryCompact(stats, opts);
-  const { speed = 1, anim = true, title = "Token Stack · Claude Code", breakdown = "log" } = opts;
+  const { speed = 1, anim = true, title = "Token Stack · Local AI", breakdown = "log" } = opts;
   const t = resolveTheme(opts.theme);
   const W = 495, H = 250;
   const { totals } = stats;
+  const costLabel = hasUnpricedCodex(stats) ? "Claude estimate" : "estimated cost";
 
   const rows = [
     ["Input", totals.input],
@@ -965,7 +1061,7 @@ export function renderSummary(stats, opts = {}) {
 <g font-family="'Segoe UI',Ubuntu,Sans-Serif">
 <text class="f" x="25" y="33" font-size="16" font-weight="600" fill="${t.title}">⚡ ${esc(title)}</text>
 <text class="f" style="${delay(1, 0.12, speed)}" x="25" y="76" font-size="34" font-weight="800" fill="url(#big)">${formatTokens(totals.total)}</text>
-<text class="f" style="${delay(2, 0.12, speed)}" x="25" y="97" font-size="12" fill="${t.subtext}">tokens all time · est. ${formatCost(totals.cost)}</text>
+<text class="f" style="${delay(2, 0.12, speed)}" x="25" y="97" font-size="12" fill="${t.subtext}">tokens all time · ${costLabel} ${formatCost(totals.cost)}</text>
 <text class="f" style="${delay(2, 0.12, speed)}" x="255" y="97" font-size="10" text-anchor="end" fill="${t.subtext}">${breakdown === "log" ? "relative log scale" : "raw token scale"}</text>
 ${rowsSvg}
 <text class="f" style="${delay(3, 0.12, speed)}" x="${chartX}" y="112" font-size="11" fill="${t.subtext}">last 14 days · ${formatTokens(sparkTotal)}</text>
@@ -996,6 +1092,7 @@ export function renderActivity(stats, opts = {}) {
   const dateY = skylineLayout ? 212 : baseY + 18;
   const windowTotal = days.reduce((a, d) => a + d.total, 0);
   const windowCost = days.reduce((a, d) => a + d.cost, 0);
+  const skylineCostLabel = hasUnpricedCodex(stats) ? "CLAUDE EST." : "EST. COST";
   const drawChart = chart === "skyline" ? chartSkylineContinuous : chartBars;
   const { svg: chartSvg, extraCss } = drawChart(days, t, { x: chartX, y: baseY - chartH, w: chartW, h: chartH }, {
     anim,
@@ -1004,16 +1101,20 @@ export function renderActivity(stats, opts = {}) {
     now: opts.now,
     tokenStreak: signals?.tokenStreak,
     skylineStyle: opts.skylineStyle,
+    cityPalette: opts.cityPalette,
+    cityBase: opts.cityBase,
+    cityMotion: opts.cityMotion,
+    mobility: signals,
   });
   const skylineReadout = signals
     ? (() => {
       const streakLabel = signals.tokenStreak ? `${signals.tokenStreakDisplay}D` : "NO";
       const streakColor = skylinePhase?.grass ?? t.big[1];
-      return `<g class="f skyline-readout skyline-legend" style="${delay(2, .1, speed)}" data-rhythm="${signals.rhythm}" data-active-days="${signals.activeDays}" data-window-days="${signals.windowDays}" data-token-streak="${signals.tokenStreak}"><title>Building height represents daily tokens. City density represents sustained token activity. The green route represents the current streak. ${signals.readout}</title><g class="skyline-legend-height"><rect x="25" y="190" width="2.5" height="5" rx=".55" fill="${t.big[0]}"/><rect x="29" y="187" width="2.5" height="8" rx=".55" fill="${t.big[0]}"/><rect x="33" y="183" width="2.5" height="12" rx=".55" fill="${t.big[1]}"/><text x="41" y="187" font-size="6.2" font-weight="650" letter-spacing=".38" fill="${t.subtext}">BUILDING HEIGHT</text><text x="41" y="195" font-size="8.3" font-weight="650" fill="${t.title}">DAILY TOKENS</text></g><path d="M174 182V197" stroke="${t.border}" stroke-opacity=".58" stroke-width=".65"/><g class="skyline-legend-active"><circle cx="193" cy="185" r="1.25" fill="${t.big[0]}" fill-opacity=".45"/><circle cx="198" cy="188" r="1.75" fill="${t.big[0]}" fill-opacity=".68"/><circle cx="203" cy="184" r="2.15" fill="${t.big[1]}" fill-opacity=".88"/><text x="211" y="187" font-size="6.2" font-weight="650" letter-spacing=".38" fill="${t.subtext}">CITY DENSITY</text><text x="211" y="195" font-size="8.3" font-weight="650" fill="${t.title}">${signals.activeDays}/${signals.windowDays} ACTIVE DAYS</text></g><path d="M344 182V197" stroke="${t.border}" stroke-opacity=".58" stroke-width=".65"/><g class="skyline-legend-streak"><path d="M361 185.5H380" stroke="${streakColor}" stroke-width="1.8" stroke-linecap="round"/><circle cx="380" cy="185.5" r="1.45" fill="${streakColor}"/><text x="387" y="187" font-size="6.2" font-weight="650" letter-spacing=".38" fill="${t.subtext}">GREEN ROUTE</text><text x="470" y="195" font-size="8.3" font-weight="650" text-anchor="end" fill="${t.subtext}"><tspan fill="${streakColor}">${streakLabel}</tspan> CURRENT STREAK</text></g><path class="skyline-legend-rule" d="M14 199H481" stroke="${t.border}" stroke-opacity=".48" stroke-width=".7"/></g>`;
+      return `<g class="f skyline-readout skyline-legend" style="${delay(2, .1, speed)}" data-rhythm="${signals.rhythm}" data-active-days="${signals.activeDays}" data-window-days="${signals.windowDays}" data-token-streak="${signals.tokenStreak}" data-recent-sessions="${signals.recentSessions}" data-active-projects="${signals.projectBreadth}"><title>Building height represents daily tokens. City density represents sustained token activity. The green route represents the current streak. Traffic reflects recent sessions and pedestrians reflect active projects. ${signals.readout}</title><g class="skyline-legend-height"><rect x="25" y="190" width="2.5" height="5" rx=".55" fill="${t.big[0]}"/><rect x="29" y="187" width="2.5" height="8" rx=".55" fill="${t.big[0]}"/><rect x="33" y="183" width="2.5" height="12" rx=".55" fill="${t.big[1]}"/><text x="41" y="187" font-size="6.2" font-weight="650" letter-spacing=".38" fill="${t.subtext}">BUILDING HEIGHT</text><text x="41" y="195" font-size="8.3" font-weight="650" fill="${t.title}">DAILY TOKENS</text></g><path d="M174 182V197" stroke="${t.border}" stroke-opacity=".58" stroke-width=".65"/><g class="skyline-legend-active"><circle cx="193" cy="185" r="1.25" fill="${t.big[0]}" fill-opacity=".45"/><circle cx="198" cy="188" r="1.75" fill="${t.big[0]}" fill-opacity=".68"/><circle cx="203" cy="184" r="2.15" fill="${t.big[1]}" fill-opacity=".88"/><text x="211" y="187" font-size="6.2" font-weight="650" letter-spacing=".38" fill="${t.subtext}">CITY DENSITY</text><text x="211" y="195" font-size="8.3" font-weight="650" fill="${t.title}">${signals.activeDays}/${signals.windowDays} ACTIVE DAYS</text></g><path d="M344 182V197" stroke="${t.border}" stroke-opacity=".58" stroke-width=".65"/><g class="skyline-legend-streak"><path d="M361 185.5H380" stroke="${streakColor}" stroke-width="1.8" stroke-linecap="round"/><circle cx="380" cy="185.5" r="1.45" fill="${streakColor}"/><text x="387" y="187" font-size="5.7" font-weight="650" letter-spacing=".25" fill="${t.subtext}">STREAK · SESSIONS / PROJECTS</text><text x="470" y="195" font-size="8.3" font-weight="650" text-anchor="end" fill="${t.subtext}"><tspan fill="${streakColor}">${streakLabel}</tspan> · ${signals.recentSessions} / ${signals.projectBreadth}</text></g><path class="skyline-legend-rule" d="M14 199H481" stroke="${t.border}" stroke-opacity=".48" stroke-width=".7"/></g>`;
     })()
     : "";
   const skylineHeader = skylineLayout
-    ? `<g class="f skyline-header"><g class="skyline-title-mark"><rect x="25" y="13" width="2.6" height="6" rx=".5" fill="${t.big[0]}"/><rect x="29" y="10" width="2.6" height="9" rx=".5" fill="${t.big[0]}"/><rect x="33" y="7" width="2.6" height="12" rx=".5" fill="${t.big[1]}"/></g><text x="45" y="20" font-size="13" font-weight="650" letter-spacing=".08" fill="${t.title}">${esc(displayTitle)}</text></g><g class="f skyline-header-metrics" style="${delay(1, .12, speed)}" data-window-tokens="${windowTotal}" data-window-cost="${windowCost.toFixed(2)}" data-window-days="${sourceDays.length}"><path d="M337 7V23M414 7V23" stroke="${t.border}" stroke-opacity=".45" stroke-width=".6"/><g class="skyline-header-token"><text x="302" y="11" font-size="5.7" font-weight="650" letter-spacing=".55" text-anchor="middle" fill="${t.subtext}">TOKENS</text><text x="302" y="21" font-size="9.3" font-weight="650" text-anchor="middle" fill="${t.title}">${formatTokens(windowTotal)}</text></g><g class="skyline-header-cost"><text x="376" y="11" font-size="5.7" font-weight="650" letter-spacing=".55" text-anchor="middle" fill="${t.subtext}">EST. COST</text><text x="376" y="21" font-size="9.3" font-weight="650" text-anchor="middle" fill="${t.title}">${formatCost(windowCost)}</text></g><g class="skyline-header-window"><text x="447" y="11" font-size="5.7" font-weight="650" letter-spacing=".55" text-anchor="middle" fill="${t.subtext}">WINDOW</text><text x="447" y="21" font-size="9.3" font-weight="650" text-anchor="middle" fill="${t.title}">${sourceDays.length}D</text></g></g>`
+    ? `<g class="f skyline-header"><g class="skyline-title-mark"><rect x="25" y="13" width="2.6" height="6" rx=".5" fill="${t.big[0]}"/><rect x="29" y="10" width="2.6" height="9" rx=".5" fill="${t.big[0]}"/><rect x="33" y="7" width="2.6" height="12" rx=".5" fill="${t.big[1]}"/></g><text x="45" y="20" font-size="13" font-weight="650" letter-spacing=".08" fill="${t.title}">${esc(displayTitle)}</text></g><g class="f skyline-header-metrics" style="${delay(1, .12, speed)}" data-window-tokens="${windowTotal}" data-window-cost="${windowCost.toFixed(2)}" data-window-days="${sourceDays.length}"><path d="M337 7V23M414 7V23" stroke="${t.border}" stroke-opacity=".45" stroke-width=".6"/><g class="skyline-header-token"><text x="302" y="11" font-size="5.7" font-weight="650" letter-spacing=".55" text-anchor="middle" fill="${t.subtext}">TOKENS</text><text x="302" y="21" font-size="9.3" font-weight="650" text-anchor="middle" fill="${t.title}">${formatTokens(windowTotal)}</text></g><g class="skyline-header-cost"><text x="376" y="11" font-size="5.7" font-weight="650" letter-spacing=".55" text-anchor="middle" fill="${t.subtext}">${skylineCostLabel}</text><text x="376" y="21" font-size="9.3" font-weight="650" text-anchor="middle" fill="${t.title}">${formatCost(windowCost)}</text></g><g class="skyline-header-window"><text x="447" y="11" font-size="5.7" font-weight="650" letter-spacing=".55" text-anchor="middle" fill="${t.subtext}">WINDOW</text><text x="447" y="21" font-size="9.3" font-weight="650" text-anchor="middle" fill="${t.title}">${sourceDays.length}D</text></g></g>`
     : "";
 
   const body = `

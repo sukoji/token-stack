@@ -8,7 +8,7 @@
 [![zero dependencies](https://img.shields.io/badge/dependencies-0-8b949e?style=flat-square)](./package.json)
 [![npm](https://img.shields.io/npm/v/@sukojin/token-stack?style=flat-square)](https://www.npmjs.com/package/@sukojin/token-stack)
 
-`token-stack` reads the local JSONL transcripts created by Claude Code, aggregates token usage, and renders animated SVG cards for a GitHub profile, project README, or blog. Your transcripts stay on your machine; only the SVG you choose to publish leaves it.
+`token-stack` reads local Claude Code and Codex JSONL activity, aggregates the token fields each provider exposes, and renders animated SVG cards for a GitHub profile, project README, or blog. Your transcripts stay on your machine; only the SVG you choose to publish leaves it.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/sukoji/token-stack/main/assets/token-stack-summary.svg" width="495" alt="Token Stack wide summary card"/>
@@ -40,7 +40,7 @@ Prefer a global install? `npm install --global @sukojin/token-stack`, then use `
 
 | Card | What it shows |
 |---|---|
-| `summary` | All-time tokens, estimated API cost, streak, and an order-of-magnitude input/output/cache comparison |
+| `summary` | All-time tokens, Claude API-cost estimate when available, streak, and an order-of-magnitude input/output/cache comparison |
 | `activity` | Daily token activity for a selected window |
 | `models` | Token share by model |
 | `agents` | Session-based activity share across Claude Code, Codex, and Antigravity |
@@ -90,9 +90,9 @@ trend, `--chart grass` for a GitHub-style long-term contribution view, or `--cha
 
 Skyline reads like an activity landscape: no activity becomes a small field, light activity becomes homes, then mid-rise and high-rise buildings; only the busiest relative days become distinctive landmark towers. The same history always produces the same city.
 
-The full-width Activity Skyline labels every headline value in the upper panel as `TOKENS`, `EST. COST`, or `WINDOW`. Its lower two-level legend explains both the visual encoding and the current value: `BUILDING HEIGHT / DAILY TOKENS`, `CITY DENSITY / 18/30 ACTIVE DAYS`, and `GREEN ROUTE / 7D CURRENT STREAK`. Building height is the daily token total, city density reflects sustained token activity, and the green route at the base marks the current trailing run of token-active days. If that run reaches the left edge of the selected window, the card uses `≥` because the actual streak may have begun earlier. The compact Skyline keeps the artwork clean and carries the same explanation in the SVG accessibility description.
+The full-width Activity Skyline labels every headline value in the upper panel as `TOKENS`, `EST. COST`/`CLAUDE EST.`, or `WINDOW`. Its lower two-level legend explains the current city: `BUILDING HEIGHT / DAILY TOKENS`, `CITY DENSITY / 18/30 ACTIVE DAYS`, and `STREAK · SESSIONS / PROJECTS / 7D · 12 / 3`. Building height is the daily token total, city density reflects sustained token activity, and the green route marks the current trailing run of token-active days. Traffic uses the latest seven days of collected sessions; pedestrians use the largest active-project count in that period. If a streak reaches the left edge of the window, the card uses `≥` because it may have begun earlier. The compact Skyline keeps the artwork clean and carries the explanation in its accessible SVG description.
 
-These are intentionally token-only signals derived from the displayed daily token series. Token Stack does not infer programming languages, GitHub contributions, pull requests, or provider token totals it cannot read; Claude Code, Codex, and Antigravity session mix remains separately and explicitly represented by the `agents` card.
+The building signals are intentionally token-only. Street life is explicitly session/project activity, and the `agents` card remains the provider-session view. Token Stack does not infer programming languages, GitHub contributions, pull requests, or provider totals it cannot read.
 
 It is rendered as connected activity districts rather than one building per day. Each sampled token interval controls the height and density of a district spanning rear, middle, and foreground depth planes, while activity-cluster centers pull surrounding buildings into stronger downtown groups. Small street-front buildings can overlap taller towers behind them instead of forming a single flat row. Foreground buildings deterministically choose glass, office, residential, masonry, or civic architecture; each type changes its roof profile, façade divisions, balconies, cornices, or service floors. A low continuous streetwall and distant city keep the horizon intact, while only prominent local peaks become one or two landmark towers. Tiered needle, split-fin, lantern, tapered-twist, and terraced silhouettes provide architectural variety without copying a real building. A sustained activity plateau stays a dense city district instead of becoming repeated towers. Animated cards construct each foreground silhouette from the street upward, revealing façade detail and floor windows in the same bottom-to-top order. Building façades and windows are clipped to their exact silhouettes, so architectural detail cannot spill outside a sloped roof or tapered tower.
 
@@ -105,6 +105,21 @@ npx @sukojin/token-stack generate --card activity --chart skyline --sky night
 npx @sukojin/token-stack generate --card activity --chart skyline --skyline-style classic
 ```
 
+The default remains `natural + waterfront`. Compose a different city without changing its data semantics:
+
+```bash
+# Warm masonry beside a park and walking path
+npx @sukojin/token-stack generate --card activity --chart skyline --city-palette copper --city-base park
+
+# Desaturated business district with a road/transit foreground
+npx @sukojin/token-stack generate --card activity --chart skyline --city-palette graphite --city-base transit
+
+# Keep cars and pedestrians visible but static with --no-anim, or remove them entirely
+npx @sukojin/token-stack generate --card activity --chart skyline --city-motion off
+```
+
+Palettes are `natural`, `graphite`, `copper`, and `evergreen`; bases are `waterfront`, `park`, and `transit`. `--city-motion auto` derives up to five small vehicles and pedestrians from recent session/project signals. Animation is deterministic, restrained, and disabled by `prefers-reduced-motion`.
+
 All cards are SVGs. `--scale 0.75`, `--scale 1`, and `--scale 1.25` change intrinsic output dimensions
 without distorting the ratio, which is useful when a README renderer does not apply a width attribute.
 
@@ -114,22 +129,23 @@ larger than input/output; log scale keeps every category visible while the label
 
 ## Agent distribution
 
-The `agents` card is deliberately **session-based**, not token-based. Claude exposes the billing fields currently supported by the token collector, while Codex and Antigravity are normalized only at the session level. Recent Codex rollout files can contain `token_count` events, but token-stack does not ingest those fields yet. Counting unique local sessions gives every supported agent a fair, explainable activity share without mixing unsupported provider totals.
+The `agents` card is deliberately **session-based**, so Claude Code, Codex, and Antigravity can share one explainable denominator even when their local token schemas differ.
 
-The `summary`, `activity`, and `models` cards remain token-based. Today that means their token totals and Skyline come from Claude Code telemetry; Codex and Antigravity contribute to the `agents` card but not to token totals. A Codex-only or Antigravity-only token card therefore shows zero tokens instead of estimating usage. Use the `agents` card when you want a cross-provider view.
+The `summary`, `activity`, `models`, and Skyline cards now include Claude Code plus Codex `token_count` usage. Codex cumulative snapshots, cache subsets, counter resets, forked rollouts, and copied snapshots are normalized before aggregation. Antigravity remains session-only because its supported local activity records do not expose provider-comparable token totals. Codex cost stays unpriced: when Claude and Codex tokens are mixed, the card says `CLAUDE EST.` instead of implying that `$` covers Codex subscription use.
 
 `--provider auto` (the default) safely detects these local sources:
 
 | Agent | Default source | Basis |
 |---|---|---|
-| Claude Code | `~/.claude/projects` | Unique Claude sessions |
-| Codex | `~/.codex/sessions` | Unique Codex rollout files |
+| Claude Code | `~/.claude/projects` | Tokens and unique sessions |
+| Codex | `$CODEX_HOME/sessions`, `~/.codex/sessions`, sibling `archived_sessions` | Tokens and unique session IDs |
 | Antigravity | `~/.gemini/antigravity/brain` | Unique Antigravity brain transcripts |
 
 Use a provider-only view or override a location when needed:
 
 ```bash
 npx @sukojin/token-stack generate --card agents --provider codex
+npx @sukojin/token-stack stats --provider codex --no-history
 npx @sukojin/token-stack generate --card agents --antigravity-source /path/to/brain
 ```
 
@@ -137,7 +153,7 @@ npx @sukojin/token-stack generate --card agents --antigravity-source /path/to/br
 
 ## Provider verification
 
-The compatibility suite exercises the documented session metadata and timestamp shapes for Claude Code, Codex, and Antigravity without storing transcript text. It covers provider-only and mixed histories, duplicate and malformed records, invalid token values, legacy and partially migrated histories, Unicode paths, concurrent writers, stale locks, transient Windows file locks, corrupt-history preservation, and Gist create/update failures.
+The compatibility suite exercises fixture-backed Claude Code, Codex, and Antigravity shapes without storing transcript text. Codex's local rollout token schema is not a documented public API, so the parser is deliberately defensive and covered for cumulative snapshots, cache subsets, counter resets, copied events, malformed records, model changes, and Windows/POSIX project paths. The wider suite covers provider-only and mixed histories, legacy migration, Unicode paths, concurrent writers, stale locks, transient Windows locks, corrupt-history preservation, and Gist failures.
 
 Skyline has a deterministic matrix of 11 usage profiles—from an empty first run and a 17K-token first week through spikes, plateaus, 90-day heavy use, 365-day compression, and `Number.MAX_SAFE_INTEGER`. Every profile is rendered in four sky phases and both full and compact layouts: 88 SVGs checked for finite geometry, bounded building sizes, resolved clips and IDs, safe escaped text, local-only content, deterministic output, and token-scale semantics.
 
@@ -178,6 +194,9 @@ These checks verify the known formats and failure modes; they cannot guarantee t
 | `--chart` | `bars` | Trend: `bars`, `line`, `grass`, or `skyline` (also works with the activity card) |
 | `--sky` | `auto` | Skyline atmosphere: follows local time, or `dawn`, `day`, `dusk`, `night` |
 | `--skyline-style` | `cinematic` | Skyline rendering: layered `cinematic` or lighter `classic` |
+| `--city-palette` | `natural` | `natural`, `graphite`, `copper`, or `evergreen` |
+| `--city-base` | `waterfront` | `waterfront`, `park`, or `transit` foreground |
+| `--city-motion` | `auto` | `auto` uses collected session/project signals; `off` removes street life |
 | `--breakdown` | `log` | Summary comparison: `log` (readable) or `raw` (proportional tokens) |
 | `--theme` | `dark` | `dark`, `light`, `dracula`, or `tokyonight` |
 | `--days` | `30` | Activity-chart window, from 1 to 3650 days |
@@ -188,7 +207,7 @@ These checks verify the known formats and failure modes; they cannot guarantee t
 | `--archetype` | `auto` | Passport archetype; `auto` derives it from local activity |
 | `--source` | `~/.claude/projects` | Primary Claude Code data directory |
 | `--provider` | `auto` | `auto`, `claude`, `codex`, or `antigravity` |
-| `--codex-source` | `~/.codex/sessions` | Override Codex session directory |
+| `--codex-source` | auto-discovered | Override all Codex session discovery with one directory |
 | `--antigravity-source` | `~/.gemini/antigravity/brain` | Override Antigravity brain directory |
 | `--agent-source` | | Extra `name:directory` JSONL source; repeatable |
 | `--privacy` | `public` | `private` removes project names from JSON output |
@@ -207,17 +226,18 @@ It prints a Claude Code `SessionEnd` hook that runs `token-stack sync`. Review a
 
 ## History and costs
 
-Claude Code may delete old transcripts. token-stack stores a small per-day snapshot at `~/.token-stack/history.json` so all-time values continue growing. It contains aggregate token/model/project labels and session IDs, never messages or transcript text. `--privacy private` removes project names from JSON output; it does not rewrite this local history file. Writes are atomic, serialized across simultaneous token-stack processes, and merged so a hook and a scheduled sync cannot silently overwrite each other.
+Local tools may archive or delete old transcripts. token-stack stores a small provider-scoped per-day snapshot at `~/.token-stack/history.json` so all-time values continue growing. It contains aggregate token/model/project labels and session IDs, never messages or transcript text. `--privacy private` removes project names from JSON output; it does not rewrite this local history file. Writes are atomic, serialized across simultaneous token-stack processes, and merged so a hook and a scheduled sync cannot silently overwrite each other.
 
 The first run records the machine's IANA timezone in history and keeps using it for day boundaries, streaks, and chart windows. Existing history without this field adopts the machine timezone once on upgrade. This prevents travel, CI, or a server move from counting the same transcript under a second date. Skyline's `--sky auto` atmosphere still follows the machine's current clock; it does not change the saved aggregation timezone.
 
-Costs are API-price estimates, not subscription charges. If you use Pro or Max, treat them as a comparable usage metric rather than an invoice.
+Costs are API-price estimates, not subscription charges. Codex product usage is intentionally unpriced; mixed cards label the dollar figure as a Claude estimate. Treat every displayed cost as a comparable Claude usage metric rather than an invoice.
 
 ## Development and releases
 
 ```bash
 npm test
 npm run verify:skyline
+npm run verify:city
 npm run verify:pack
 npm pack --dry-run
 ```

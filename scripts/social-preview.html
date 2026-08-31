@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1200,height=630">
+  <title>token-stack social preview</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 1200px; height: 630px; margin: 0; overflow: hidden; }
+    body {
+      position: relative;
+      display: grid;
+      grid-template-columns: 510px 1fr;
+      align-items: center;
+      gap: 54px;
+      padding: 62px 68px;
+      color: #e6edf3;
+      background:
+        radial-gradient(circle at 78% 20%, rgba(88, 166, 255, .13), transparent 34%),
+        radial-gradient(circle at 76% 86%, rgba(188, 140, 255, .1), transparent 28%),
+        #0b1017;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    body::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+      background-size: 36px 36px;
+      mask-image: linear-gradient(90deg, #000, transparent 62%);
+    }
+    .copy { position: relative; z-index: 1; }
+    .brand { display: flex; align-items: center; gap: 18px; margin-bottom: 25px; }
+    .mark { display: flex; align-items: end; gap: 6px; height: 51px; }
+    .mark i { display: block; width: 10px; border-radius: 4px; background: linear-gradient(#58a6ff, #bc8cff); }
+    .mark i:nth-child(1) { height: 24px; }
+    .mark i:nth-child(2) { height: 38px; }
+    .mark i:nth-child(3) { height: 51px; }
+    h1 { margin: 0; font-size: 65px; line-height: 1; letter-spacing: -3.2px; background: linear-gradient(90deg, #69b5ff, #b991ff); color: transparent; background-clip: text; }
+    h2 { margin: 0 0 18px; max-width: 480px; font-size: 31px; line-height: 1.26; letter-spacing: -.7px; }
+    p { margin: 0 0 27px; max-width: 470px; color: #aeb8c6; font-size: 19px; line-height: 1.5; }
+    .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+    .chip { padding: 8px 13px; border: 1px solid #303946; border-radius: 999px; color: #c5d0de; background: rgba(24, 31, 41, .86); font-size: 14px; }
+    .chip strong { color: #72d98c; font-weight: 700; }
+    code { display: inline-block; padding: 13px 16px; border: 1px solid #344050; border-radius: 9px; color: #79c0ff; background: #111923; font: 16px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .visual { position: relative; z-index: 1; width: 600px; transform: translateX(-45px) rotate(-1.5deg); }
+    .card { width: 600px; padding: 13px; border: 1px solid rgba(130, 155, 185, .3); border-radius: 19px; background: rgba(7, 11, 17, .68); box-shadow: 0 32px 80px rgba(0,0,0,.48); }
+    .card img { display: block; width: 574px; height: auto; border-radius: 10px; }
+    .caption { display: flex; justify-content: space-between; padding: 13px 7px 2px; color: #8f9bab; font-size: 13px; letter-spacing: .3px; }
+    .caption b { color: #d9e3ef; }
+  </style>
+</head>
+<body>
+  <section class="copy">
+    <div class="brand"><span class="mark"><i></i><i></i><i></i></span><h1>token-stack</h1></div>
+    <h2>Your local AI coding activity, rendered as a living city.</h2>
+    <p>Private SVG cards for GitHub profiles — now tracking Claude Code and Codex tokens.</p>
+    <div class="chips">
+      <span class="chip"><strong>local-only</strong> telemetry</span>
+      <span class="chip">zero runtime deps</span>
+      <span class="chip">12 city combinations</span>
+    </div>
+    <code>npx @sukojin/token-stack sync --card all</code>
+  </section>
+  <section class="visual">
+    <div class="card">
+      <img src="../assets/token-stack-activity.svg" alt="Token Stack activity skyline">
+      <div class="caption"><b>data-derived skyline</b><span>tokens · sessions · projects</span></div>
+    </div>
+  </section>
+</body>
+</html>

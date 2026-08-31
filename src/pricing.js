@@ -14,6 +14,10 @@ const TIERS = [
 const FALLBACK = { input: 3, output: 15 };
 
 export function priceFor(model) {
+  // Codex token_count telemetry measures local product usage, not API-billed
+  // spend. Internal Codex model keys are namespaced so mixed totals never get
+  // priced with the Claude fallback tier.
+  if (/^codex:/i.test(model)) return { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
   const tier = TIERS.find((t) => t.match.test(model)) ?? FALLBACK;
   return {
     input: tier.input,

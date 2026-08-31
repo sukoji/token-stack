@@ -80,3 +80,15 @@ test("CLI validates the skyline style before reading local activity", () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Skyline style must be "cinematic" or "classic"/);
 });
+
+test("CLI validates city composition options before reading local activity", () => {
+  for (const [flag, value, message] of [
+    ["--city-palette", "neon", /City palette must be/],
+    ["--city-base", "ocean", /City base must be/],
+    ["--city-motion", "fast", /City motion must be/],
+  ]) {
+    const result = run(["generate", flag, value]);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, message);
+  }
+});

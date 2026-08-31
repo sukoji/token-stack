@@ -5,7 +5,19 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { aggregate, collectAntigravitySessions, collectCodexSessions, collectEntries, filterHistoryByProvider, loadHistory, mergeHistory, saveHistory, toDayRecords } from "../src/collect.js";
+import { aggregate, collectAntigravitySessions, collectCodexSessions, collectEntries, defaultCodexSourceDirs, filterHistoryByProvider, loadHistory, mergeHistory, saveHistory, toDayRecords } from "../src/collect.js";
+
+const codexToken = (timestamp, total, last = total) => ({
+  timestamp,
+  type: "event_msg",
+  payload: {
+    type: "token_count",
+    info: {
+      total_token_usage: total,
+      last_token_usage: last,
+    },
+  },
+});
 
 test("collects and de-duplicates Claude usage responses", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "token-stack-test-"));
@@ -40,6 +52,77 @@ test("collects provider activity using the documented Codex and Antigravity sess
     { name: "codex", sessions: 1, activeDays: 1 },
   ]);
   fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("collects Codex cumulative token deltas without double-counting cache or copied snapshots", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "token-stack-codex-tokens-"));
+  try {
+    const rows = [
+      { timestamp: "2026-07-13T10:00:00Z", type: "session_meta", payload: { session_id: "codex-token-session", cwd: "C:\\work\\demo" } },
+      { timestamp: "2026-07-13T10:01:00Z", type: "turn_context", payload: { model: "gpt-5-codex", cwd: "C:\\work\\demo" } },
+      codexToken("2026-07-13T10:02:00Z", { input_tokens: 100, cached_input_tokens: 40, cache_write_input_tokens: 10, output_tokens: 20, reasoning_output_tokens: 5, total_tokens: 120 }),
+      codexToken("2026-07-13T10:02:00Z", { input_tokens: 100, cached_input_tokens: 40, cache_write_input_tokens: 10, output_tokens: 20, reasoning_output_tokens: 5, total_tokens: 120 }),
+      codexToken("2026-07-13T10:03:00Z", { input_tokens: 180, cached_input_tokens: 70, cache_write_input_tokens: 10, output_tokens: 30, total_tokens: 210 }, { input_tokens: 80, cached_input_tokens: 30, cache_write_input_tokens: 0, output_tokens: 10, total_tokens: 90 }),
+      { timestamp: "2026-07-14T00:01:00Z", type: "turn_context", payload: { model: "gpt-5.2-codex", cwd: "/work/next" } },
+      codexToken("2026-07-14T00:02:00Z", { input_tokens: 230, cached_input_tokens: 90, cache_write_input_tokens: 10, output_tokens: 50, total_tokens: 280 }, { input_tokens: 50, cached_input_tokens: 20, cache_write_input_tokens: 0, output_tokens: 20, total_tokens: 70 }),
+    ];
+    fs.writeFileSync(path.join(root, "rollout.jsonl"), rows.map((row) => JSON.stringify(row)).join("\n"));
+    const entries = collectCodexSessions(root);
+    assert.equal(entries.length, 3);
+    assert.deepEqual(entries.map(({ input, output, cacheRead, cacheWrite }) => ({ input, output, cacheRead, cacheWrite })), [
+      { input: 50, output: 20, cacheRead: 40, cacheWrite: 10 },
+      { input: 50, output: 10, cacheRead: 30, cacheWrite: 0 },
+      { input: 30, output: 20, cacheRead: 20, cacheWrite: 0 },
+    ]);
+    assert.deepEqual(entries.map((entry) => entry.project), ["demo", "demo", "next"]);
+    const history = { version: 1, timezone: "UTC", days: toDayRecords(entries, { timeZone: "UTC" }) };
+    const stats = aggregate(history, { days: 2 });
+    assert.equal(stats.totals.total, 280);
+    assert.equal(stats.totals.cost, 0);
+    assert.deepEqual(Object.values(history.days).map((day) => Object.values(day.models).reduce((sum, bucket) => sum + bucket.total, 0)), [210, 70]);
+    assert.deepEqual(stats.byModel.map(({ name, provider, total }) => ({ name, provider, total })), [
+      { name: "gpt-5-codex", provider: "codex", total: 210 },
+      { name: "gpt-5.2-codex", provider: "codex", total: 70 },
+    ]);
+    assert.deepEqual(stats.byAgentActivity, [{ name: "codex", sessions: 1, activeDays: 2 }]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("Codex counter resets use last usage and duplicate rollout copies stay idempotent", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "token-stack-codex-reset-"));
+  try {
+    const rows = [
+      { timestamp: "2026-07-13T10:00:00Z", type: "session_meta", payload: { session_id: "forked-session", cwd: "/work/demo" } },
+      { timestamp: "2026-07-13T10:01:00Z", type: "turn_context", payload: { model: "gpt-5-codex" } },
+      codexToken("2026-07-13T10:02:00Z", { input_tokens: 1_000, cached_input_tokens: 800, output_tokens: 100, total_tokens: 1_100 }, { input_tokens: 80, cached_input_tokens: 60, output_tokens: 20, total_tokens: 100 }),
+      codexToken("2026-07-13T10:03:00Z", { input_tokens: 1_080, cached_input_tokens: 860, output_tokens: 120, total_tokens: 1_200 }, { input_tokens: 80, cached_input_tokens: 60, output_tokens: 20, total_tokens: 100 }),
+      codexToken("2026-07-13T10:04:00Z", { input_tokens: 40, cached_input_tokens: 30, output_tokens: 10, total_tokens: 50 }, { input_tokens: 40, cached_input_tokens: 30, output_tokens: 10, total_tokens: 50 }),
+    ];
+    const content = rows.map((row) => JSON.stringify(row)).join("\n");
+    fs.writeFileSync(path.join(root, "rollout-a.jsonl"), content);
+    fs.writeFileSync(path.join(root, "rollout-copy.jsonl"), content);
+    const stats = aggregate({ version: 1, timezone: "UTC", days: toDayRecords(collectCodexSessions(root), { timeZone: "UTC" }) });
+    assert.equal(stats.totals.total, 250);
+    assert.equal(stats.sessions, 1);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("Codex default discovery includes CODEX_HOME and the conventional home without duplicates", () => {
+  const previous = process.env.CODEX_HOME;
+  try {
+    process.env.CODEX_HOME = path.join(os.tmpdir(), "custom-codex-home");
+    const roots = defaultCodexSourceDirs();
+    assert.equal(roots[0], path.join(process.env.CODEX_HOME, "sessions"));
+    assert.ok(roots.includes(path.join(os.homedir(), ".codex", "sessions")));
+    assert.equal(new Set(roots.map((root) => path.resolve(root).toLowerCase())).size, roots.length);
+  } finally {
+    if (previous === undefined) delete process.env.CODEX_HOME;
+    else process.env.CODEX_HOME = previous;
+  }
 });
 
 test("deduplicates provider sessions and preserves legacy Claude snapshots", () => {
@@ -230,7 +313,7 @@ test("history merge preserves provider session unions independently of token sna
 test("provider history views isolate Claude, Codex, and Antigravity activity", () => {
   const entries = [
     { ts: "2026-07-13T08:00:00Z", model: "claude-sonnet-4-6", input: 100, output: 20, cacheRead: 0, cacheWrite: 0, project: "demo", sessionId: "same-id", agent: "claude-code" },
-    { ts: "2026-07-13T09:00:00Z", model: "", input: 0, output: 0, cacheRead: 0, cacheWrite: 0, project: "Codex", sessionId: "same-id", agent: "codex" },
+    { ts: "2026-07-13T09:00:00Z", model: "gpt-5-codex", input: 40, output: 10, cacheRead: 50, cacheWrite: 0, project: "demo", sessionId: "same-id", agent: "codex" },
     { ts: "2026-07-13T10:00:00Z", model: "", input: 0, output: 0, cacheRead: 0, cacheWrite: 0, project: "Antigravity", sessionId: "anti-1", agent: "antigravity" },
   ];
   const history = { version: 1, timezone: "UTC", days: toDayRecords(entries, { timeZone: "UTC" }) };
@@ -239,10 +322,41 @@ test("provider history views isolate Claude, Codex, and Antigravity activity", (
   const antigravity = aggregate(filterHistoryByProvider(history, "antigravity"));
   assert.equal(claude.totals.total, 120);
   assert.deepEqual(claude.byAgentActivity.map((item) => item.name), ["claude-code"]);
-  assert.equal(codex.totals.total, 0);
+  assert.equal(codex.totals.total, 100);
+  assert.equal(codex.totals.cost, 0);
+  assert.deepEqual(codex.byModel.map(({ name, provider }) => ({ name, provider })), [{ name: "gpt-5-codex", provider: "codex" }]);
   assert.deepEqual(codex.byAgentActivity, [{ name: "codex", sessions: 1, activeDays: 1 }]);
   assert.deepEqual(antigravity.byAgentActivity, [{ name: "antigravity", sessions: 1, activeDays: 1 }]);
-  assert.equal(aggregate(history).sessions, 3);
+  const combined = aggregate(history);
+  assert.equal(combined.sessions, 3);
+  assert.equal(combined.totals.total, 220);
+  assert.equal(combined.totals.cost, claude.totals.cost);
+});
+
+test("history merges token snapshots independently for each provider", () => {
+  const oldEntries = [
+    { ts: "2026-07-13T08:00:00Z", model: "claude-sonnet-4-6", input: 100, output: 0, cacheRead: 0, cacheWrite: 0, project: "demo", sessionId: "claude-old", agent: "claude-code" },
+    { ts: "2026-07-13T09:00:00Z", model: "gpt-5-codex", input: 100, output: 0, cacheRead: 400, cacheWrite: 0, project: "demo", sessionId: "codex-old", agent: "codex" },
+  ];
+  const currentEntries = [
+    { ts: "2026-07-13T10:00:00Z", model: "claude-sonnet-4-6", input: 150, output: 0, cacheRead: 0, cacheWrite: 0, project: "demo", sessionId: "claude-new", agent: "claude-code" },
+  ];
+  const history = { version: 1, timezone: "UTC", days: toDayRecords(oldEntries, { timeZone: "UTC" }) };
+  mergeHistory(history, toDayRecords(currentEntries, { timeZone: "UTC" }));
+  assert.equal(aggregate(history).totals.total, 650);
+  assert.equal(aggregate(filterHistoryByProvider(history, "claude")).totals.total, 150);
+  assert.equal(aggregate(filterHistoryByProvider(history, "codex")).totals.total, 500);
+});
+
+test("daily aggregates expose session, project, and agent signals for city motion", () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const records = toDayRecords([
+    { ts: `${today}T01:00:00Z`, model: "claude-test", input: 10, output: 0, cacheRead: 0, cacheWrite: 0, project: "alpha", sessionId: "claude-1", agent: "claude-code" },
+    { ts: `${today}T02:00:00Z`, model: "gpt-test", input: 20, output: 0, cacheRead: 0, cacheWrite: 0, project: "beta", sessionId: "codex-1", agent: "codex" },
+  ], { timeZone: "UTC" });
+  const [day] = aggregate({ version: 1, timezone: "UTC", days: records }, { days: 1 }).byDay;
+  assert.equal(day.date, today);
+  assert.deepEqual({ total: day.total, sessions: day.sessions, projects: day.projects, agents: day.agents }, { total: 30, sessions: 2, projects: 2, agents: 2 });
 });
 
 test("collectors reject invalid timestamps and non-numeric or negative token fields", () => {

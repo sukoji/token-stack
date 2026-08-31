@@ -4,15 +4,18 @@ import path from "node:path";
 import {
   collectEntries, collectCodexSessions, collectAntigravitySessions,
   toDayRecords, loadHistory, mergeHistory, saveHistory,
-  aggregate, filterHistoryByProvider, currentTimeZone, defaultSourceDir, defaultHistoryFile, defaultCodexSourceDir, defaultAntigravitySourceDir,
+  aggregate, filterHistoryByProvider, currentTimeZone, defaultSourceDir, defaultHistoryFile, defaultCodexSourceDirs, defaultAntigravitySourceDir,
 } from "../src/collect.js";
 import { CARDS, formatTokens, formatCost } from "../src/render.js";
 import { THEMES } from "../src/themes.js";
 import { syncToGist } from "../src/sync.js";
 
 const PROVIDERS = ["auto", "claude", "codex", "antigravity"];
+const CITY_PALETTES = ["natural", "graphite", "copper", "evergreen"];
+const CITY_BASES = ["waterfront", "park", "transit"];
+const CITY_MOTIONS = ["auto", "off"];
 
-const HELP = `token-stack — animated token-usage cards from your local Claude Code sessions
+const HELP = `token-stack — animated activity cards from local Claude Code and Codex sessions
 
 Usage:
   npx @sukojin/token-stack [command] [options]
@@ -29,6 +32,9 @@ Options:
   --chart <name>    trend style: bars | line | grass | skyline (default: bars)
   --sky <mode>      skyline sky: auto | dawn | day | dusk | night (default: auto/local time)
   --skyline-style <name> skyline look: cinematic | classic (default: cinematic)
+  --city-palette <name> natural | graphite | copper | evergreen (default: natural)
+  --city-base <name> waterfront | park | transit             (default: waterfront)
+  --city-motion <name> auto | off                             (default: auto)
   --breakdown <mode> summary bars: log | raw                  (default: log)
   --theme <name>    ${Object.keys(THEMES).join(" | ")}   (default: dark)
   --days <n>        window for the activity chart        (default: 30)
@@ -43,7 +49,7 @@ Options:
   -o, --out <path>  output file or directory             (default: .)
   --source <dir>    Claude data dir                      (default: ~/.claude/projects)
   --provider <name> ${PROVIDERS.join(" | ")}                       (default: auto)
-  --codex-source <dir> Codex session directory             (default: ~/.codex/sessions)
+  --codex-source <dir> override Codex session discovery
   --antigravity-source <dir> Antigravity brain directory   (default: ~/.gemini/antigravity/brain)
   --agent-source <name:dir>  add a JSONL-compatible agent data directory (repeatable)
   --history <file>  snapshot file for all-time stats     (default: ~/.token-stack/history.json)
@@ -74,12 +80,15 @@ function parseArgs(argv) {
     privacy: "public",
     breakdown: "log",
     agentSources: [],
-    codexSource: defaultCodexSourceDir(),
+    codexSource: undefined,
     antigravitySource: defaultAntigravitySourceDir(),
     season: "Season 01",
     archetype: "auto",
     sky: "auto",
     skylineStyle: "cinematic",
+    cityPalette: "natural",
+    cityBase: "waterfront",
+    cityMotion: "auto",
   };
   const args = [...argv];
   if (args[0] && !args[0].startsWith("-")) opts.command = args.shift();
@@ -96,6 +105,9 @@ function parseArgs(argv) {
       case "--chart": opts.chart = args.shift(); break;
       case "--sky": opts.sky = args.shift(); break;
       case "--skyline-style": opts.skylineStyle = args.shift(); break;
+      case "--city-palette": opts.cityPalette = args.shift(); break;
+      case "--city-base": opts.cityBase = args.shift(); break;
+      case "--city-motion": opts.cityMotion = args.shift(); break;
       case "--breakdown": opts.breakdown = args.shift(); break;
       case "--title": opts.title = args.shift(); break;
       case "--name": opts.name = args.shift(); break;
@@ -127,6 +139,9 @@ function parseArgs(argv) {
   if (!["log", "raw"].includes(opts.breakdown)) throw new Error('Breakdown must be "log" or "raw".');
   if (!["auto", "dawn", "day", "dusk", "night"].includes(opts.sky)) throw new Error('Sky must be "auto", "dawn", "day", "dusk", or "night".');
   if (!["cinematic", "classic"].includes(opts.skylineStyle)) throw new Error('Skyline style must be "cinematic" or "classic".');
+  if (!CITY_PALETTES.includes(opts.cityPalette)) throw new Error(`City palette must be ${CITY_PALETTES.map((value) => `"${value}"`).join(", ")}.`);
+  if (!CITY_BASES.includes(opts.cityBase)) throw new Error(`City base must be ${CITY_BASES.map((value) => `"${value}"`).join(", ")}.`);
+  if (!CITY_MOTIONS.includes(opts.cityMotion)) throw new Error(`City motion must be ${CITY_MOTIONS.map((value) => `"${value}"`).join(", ")}.`);
   return opts;
 }
 
@@ -207,7 +222,9 @@ try {
 mergeHistory(history, toDayRecords(entries, { timeZone: history.timezone }));
 let viewHistory = filterHistoryByProvider(history, opts.provider);
 if (Object.keys(viewHistory.days).length === 0) {
-  const source = opts.provider === "codex" ? opts.codexSource : opts.provider === "antigravity" ? opts.antigravitySource : opts.source;
+  const source = opts.provider === "codex"
+    ? (opts.codexSource ?? defaultCodexSourceDirs().join(", "))
+    : opts.provider === "antigravity" ? opts.antigravitySource : opts.source;
   const label = opts.provider === "auto" ? "supported AI coding" : opts.provider === "claude" ? "Claude Code" : opts.provider === "codex" ? "Codex" : "Antigravity";
   console.error(`No ${label} activity found in ${source}`);
   console.error("Use the matching --source option if your local session directory is elsewhere.");
@@ -251,7 +268,8 @@ switch (opts.command) {
   }
   case "stats": {
     const t = stats.totals;
-    console.log(`Tokens (all time)   ${formatTokens(t.total)}  (~${formatCost(t.cost)})`);
+    const hasCodexTokens = stats.byAgent.some((agent) => agent.name === "codex" && agent.total > 0);
+    console.log(`Tokens (all time)   ${formatTokens(t.total)}  (${hasCodexTokens ? "Claude est. " : "~"}${formatCost(t.cost)})`);
     console.log(`  input             ${formatTokens(t.input)}`);
     console.log(`  output            ${formatTokens(t.output)}`);
     console.log(`  cache read        ${formatTokens(t.cacheRead)}`);

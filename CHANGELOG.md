@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.0
+
+- Ingest Codex `token_count` rollouts into token-based cards with cumulative-delta handling, cache-subset normalization, reset recovery, copied-snapshot de-duplication, and provider-scoped history merging.
+- Discover both `$CODEX_HOME/sessions` and `~/.codex/sessions`, including archived rollouts, while retaining `--codex-source` as an explicit override.
+- Keep Codex usage unpriced and label mixed-card dollar values as `CLAUDE EST.` rather than presenting an API estimate as a subscription charge.
+- Add composable `natural`, `graphite`, `copper`, and `evergreen` city palettes plus `waterfront`, `park`, and `transit` foregrounds.
+- Derive restrained vehicles from recent sessions and pedestrians from active-project breadth, expose those signals in the Skyline legend and SVG metadata, and support `--city-motion off` plus reduced-motion preferences.
+- Add a reusable city-options visual gallery and cross-provider, city-composition, mobility, CLI, history, and rendering regression coverage.
+- Refresh tracked example cards and the reproducible 1200×630 social preview around the Claude Code + Codex positioning and current `npx` workflow.
+
 ## 0.6.0
 
 - Compose one to five deterministic activity clusters from the selected token window so the rear, middle, and foreground layers form recognizable districts instead of an evenly distributed row.

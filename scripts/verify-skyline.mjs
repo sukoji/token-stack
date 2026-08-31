@@ -157,7 +157,7 @@ function assertHealthySvg(svg, { label, compact, sky, stats, anim = false }) {
     assert.equal(readouts.length, 1, `${label}: full card needs one city readout`);
     assert.match(svg, /BUILDING HEIGHT/, `${label}: full card lost its height encoding label`);
     assert.match(svg, /CITY DENSITY/, `${label}: full card lost its density encoding label`);
-    assert.match(svg, /GREEN ROUTE/, `${label}: full card lost its streak encoding label`);
+    assert.match(svg, /STREAK · SESSIONS \/ PROJECTS/, `${label}: full card lost its streak and mobility encoding label`);
     assert.match(svg, /class="f skyline-header-metrics"[^>]+data-window-tokens="[0-9]+"[^>]+data-window-cost="[0-9.]+"[^>]+data-window-days="[0-9]+"/, `${label}: full card lost its labeled header metrics`);
     assert.match(svg, /class="skyline-legend-rule" d="M14 199H481"/, `${label}: full card lost its city legend band`);
     assert.match(svg, new RegExp(`data-active-days="${signals.activeDays}"`), `${label}: readout active-day count disagrees with daily token data`);

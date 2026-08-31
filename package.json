@@ -1,6 +1,6 @@
 {
   "name": "@sukojin/token-stack",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Private, shareable AI coding activity cards for your GitHub README.",
   "type": "module",
   "bin": {
@@ -15,6 +15,7 @@
   "scripts": {
     "test": "node --test",
     "verify:skyline": "node scripts/verify-skyline.mjs",
+    "verify:city": "node scripts/render-city-options.mjs",
     "verify:pack": "node scripts/smoke-pack.mjs",
     "prepublishOnly": "npm test"
   },
@@ -24,9 +25,12 @@
   "keywords": [
     "claude-code",
     "codex",
+    "codex-cli",
     "ai-coding",
+    "developer-analytics",
     "token-usage",
     "github-readme",
+    "github-profile",
     "svg",
     "dashboard"
   ],
