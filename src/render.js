@@ -194,6 +194,8 @@ const SKY_PHASES = {
   night: { sky: ["#040713", "#0b1730", "#1b2a45"], luminary: "#f2f5ff", field: "#203f39", grass: "#759f76", window: "#ffd28a", stars: true, palette: { house: ["#253344", "#314153", "#22303f", "#2c3b4d", "#273747"], midrise: ["#1c3c55", "#274767", "#1f4a59", "#304560", "#21425b"], highrise: ["#153553", "#1d4164", "#164861", "#263f60", "#173d59"], landmark: ["#0d2b4c", "#153b61", "#11415d", "#1e3d59", "#123653"] } },
 };
 
+const CINEMATIC_DAY_PHASE = { sky: ["#247da8", "#76bfd3", "#eacb9c"], luminary: "#ffe38a", field: "#477a4b", grass: "#c9e57f", window: "#d9f5f4", stars: false, palette: { house: ["#9d6654", "#ae7458", "#8b5c4e", "#9a6b59", "#805b52"], midrise: ["#426b7c", "#587684", "#466f72", "#796b6d", "#405f70"], highrise: ["#2f566c", "#3d6273", "#32626b", "#575c68", "#294f63"], landmark: ["#35657e", "#294f6c", "#477181", "#3d6572", "#526d79"] } };
+
 function resolveSkyPhase(sky = "auto", now) {
   if (SKY_PHASES[sky]) return { name: sky, ...SKY_PHASES[sky] };
   if (sky !== "auto") throw new Error(`Unknown sky "${sky}". Available: auto, ${Object.keys(SKY_PHASES).join(", ")}`);
@@ -308,9 +310,12 @@ function skylineShape(tier, shape, x, width, base, height) {
 
 function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, tokenStreak = 0, skylineStyle = "cinematic" } = {}) {
   const { x, y, w, h } = box;
-  const phase = resolveSkyPhase(sky, now);
+  const resolvedPhase = resolveSkyPhase(sky, now);
   if (!["cinematic", "classic"].includes(skylineStyle)) throw new Error(`Unknown skyline style "${skylineStyle}". Available: cinematic, classic`);
   const cinematic = skylineStyle !== "classic";
+  const phase = cinematic && resolvedPhase.name === "day"
+    ? { name: resolvedPhase.name, ...CINEMATIC_DAY_PHASE }
+    : resolvedPhase;
   const detail = w >= 390 && h >= 95;
   const boundedTokenStreak = Number.isFinite(tokenStreak)
     ? clamp(Math.floor(tokenStreak), 0, days.length)
@@ -379,6 +384,7 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
   const defs = [`<clipPath id="skylineScene"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7"/></clipPath>`];
   const farBackground = [];
   const background = [];
+  const districtLayers = [[], []];
   const fabricPoints = [];
   const foreground = [];
   const reflections = [];
@@ -397,14 +403,14 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
     const stageStyle = anim ? ` style="${delay(delayIndex, .025, speed)}"` : "";
     defs.push(`<clipPath id="${clipId}"><path d="${path}"/></clipPath>`);
     const materialId = `skylineMaterial${id}`;
-    const materialHighlight = skylineMix(color, "#ffffff", phase.name === "day" ? .24 : .14);
-    const materialShadow = skylineMix(color, "#06101d", phase.name === "night" ? .52 : .34);
+    const materialHighlight = skylineMix(color, "#ffffff", phase.name === "day" ? .36 : .18);
+    const materialShadow = skylineMix(color, "#06101d", phase.name === "night" ? .58 : .5);
     if (cinematic && detail) {
-      defs.push(`<linearGradient id="${materialId}" x1="0" y1="0" x2="1" y2=".2"><stop stop-color="${materialHighlight}"/><stop offset=".42" stop-color="${color}"/><stop offset=".78" stop-color="${skylineMix(color, materialShadow, .45)}"/><stop offset="1" stop-color="${materialShadow}"/></linearGradient>`);
+      defs.push(`<linearGradient id="${materialId}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${materialHighlight}"/><stop offset=".34" stop-color="${color}"/><stop offset=".78" stop-color="${skylineMix(color, materialShadow, .55)}"/><stop offset="1" stop-color="${materialShadow}"/></linearGradient>`);
     }
     const buildingFill = cinematic && detail ? `url(#${materialId})` : color;
     const facadeWidth = Math.max(1, width * (tier === "landmark" ? .28 : cinematic ? .24 : .18));
-    const face = `<rect x="${(left + width - facadeWidth).toFixed(1)}" y="${top.toFixed(1)}" width="${facadeWidth.toFixed(1)}" height="${height.toFixed(1)}" fill="${cinematic ? materialShadow : "#101827"}" fill-opacity="${cinematic ? (phase.name === "day" ? ".22" : ".38") : (phase.name === "day" ? ".12" : ".24")}"/>`;
+    const face = `<rect x="${(left + width - facadeWidth).toFixed(1)}" y="${top.toFixed(1)}" width="${facadeWidth.toFixed(1)}" height="${height.toFixed(1)}" fill="${cinematic ? materialShadow : "#101827"}" fill-opacity="${cinematic ? (phase.name === "day" ? ".42" : ".46") : (phase.name === "day" ? ".12" : ".24")}"/>`;
     const facadeLines = detail && tier !== "house" && width >= 9
       ? Array.from({ length: clamp(Math.floor(width / 8), 1, 4) }, (_, line) => {
         const lx = left + width * ((line + 1) / (clamp(Math.floor(width / 8), 1, 4) + 1));
@@ -414,11 +420,20 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
     const facadeBands = cinematic && detail && tier !== "house" && height >= 24
       ? Array.from({ length: clamp(Math.floor(height / 14), 1, 7) }, (_, band) => {
         const bandY = top + 8 + band * Math.max(8, (height - 12) / clamp(Math.floor(height / 14), 1, 7));
-        return `<path d="M${(left + 1).toFixed(1)} ${bandY.toFixed(1)}H${(left + width - 1).toFixed(1)}" stroke="${materialShadow}" stroke-opacity=".2" stroke-width=".55"/>`;
+        return `<path d="M${(left + 1).toFixed(1)} ${bandY.toFixed(1)}H${(left + width - 1).toFixed(1)}" stroke="${materialShadow}" stroke-opacity="${phase.name === "day" ? ".3" : ".2"}" stroke-width=".55"/>`;
       }).join("")
       : "";
     const edgeLight = cinematic
       ? `<path class="skyline-edge-light" d="M${(left + 1).toFixed(1)} ${(top + 3).toFixed(1)}V${(base - 2).toFixed(1)}" stroke="${materialHighlight}" stroke-opacity="${phase.name === "night" ? ".38" : ".28"}" stroke-width=".65"/>`
+      : "";
+    const silhouetteRim = cinematic && detail
+      ? `<path class="skyline-silhouette-rim" d="${path}" fill="none" stroke="${materialHighlight}" stroke-opacity="${phase.name === "day" ? ".24" : ".16"}" stroke-width=".55"/>`
+      : "";
+    const glassSheen = cinematic && detail && tier !== "house" && width >= 8
+      ? `<path class="skyline-glass-sheen" d="M${(left + width * .12).toFixed(1)} ${base}L${(left + width * .46).toFixed(1)} ${top.toFixed(1)}H${(left + width * .67).toFixed(1)}L${(left + width * .38).toFixed(1)} ${base}Z" fill="#ffffff" fill-opacity="${phase.name === "day" ? ".075" : ".035"}"/>`
+      : "";
+    const towerPodium = cinematic && detail && tier === "highrise"
+      ? `<g class="skyline-tower-podium"><rect x="${(left - width * .08).toFixed(1)}" y="${(base - 6).toFixed(1)}" width="${(width * 1.16).toFixed(1)}" height="6" rx=".5" fill="${materialShadow}" fill-opacity=".96"/><path d="M${left.toFixed(1)} ${(base - 4).toFixed(1)}H${(left + width).toFixed(1)}" stroke="${phase.window}" stroke-opacity="${phase.name === "day" ? ".26" : ".5"}" stroke-width=".65"/></g>`
       : "";
     let windows = "";
     let crownBand = "";
@@ -449,10 +464,14 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
         const wy = startY + row * gap;
         const seed = skylineHash((delayIndex + 1) * 97 + row * 11 + col * 23);
         const on = seed < litProbability || (row === brightFloor && seed < litProbability + .22);
-        const cool = phase.name === "night" && skylineHash((delayIndex + 5) * 71 + row * 17 + col * 29) > .72;
-        const fill = cool ? "#9ed8ff" : phase.window;
+        const coolSeed = skylineHash((delayIndex + 5) * 71 + row * 17 + col * 29);
+        const cool = (phase.name === "night" && coolSeed > .72) || (cinematic && phase.name === "day" && coolSeed > .48);
+        const fill = cool ? (phase.name === "day" ? "#b8ecf5" : "#9ed8ff") : phase.window;
         const windowClass = cool ? "skyline-window skyline-window-cool" : "skyline-window skyline-window-warm";
-        return `<rect class="${windowClass}" x="${(wx - .8).toFixed(1)}" y="${wy.toFixed(1)}" width="1.6" height="${tier === "landmark" ? "2" : "2.4"}" rx=".4" fill="${fill}" fill-opacity="${on ? (phase.name === "night" ? ".9" : ".58") : ".1"}"/>`;
+        const windowOpacity = on
+          ? (phase.name === "night" ? .9 : cinematic && phase.name === "day" ? .5 : .58)
+          : (cinematic && phase.name === "day" ? .055 : .1);
+        return `<rect class="${windowClass}" x="${(wx - .8).toFixed(1)}" y="${wy.toFixed(1)}" width="1.6" height="${tier === "landmark" ? "2" : "2.4"}" rx=".4" fill="${fill}" fill-opacity="${windowOpacity}"/>`;
       }).join("")).join("");
       if (phase.name === "night" && tier === "landmark") {
         crownBand = `<rect class="skyline-crown-band" x="${(left + width * .23).toFixed(1)}" y="${(top + landmarkMetrics.lightBand).toFixed(1)}" width="${(width * .54).toFixed(1)}" height="1.1" fill="#9ed8ff" fill-opacity=".72"/>`;
@@ -460,7 +479,7 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
     } else if (width >= 3.5) {
       windows = `<path d="M${(left + width * .5).toFixed(1)} ${top + 4}V${base - 3}" stroke="${phase.window}" stroke-opacity=".35" stroke-width=".7"/>`;
     }
-    foreground.push(`<g class="skyline-${tier}" data-height="${height.toFixed(1)}" data-width="${width.toFixed(1)}" data-score="${score.toFixed(3)}" data-density="${density.toFixed(3)}"><title>${esc(label)}</title><g class="skyline-building-stage" data-building-id="${id}" clip-path="url(#${clipId})"><g class="${stageClass}"${stageStyle}><path class="skyline-building skyline-${tier}-${shape % 5}" d="${path}" fill="${buildingFill}" fill-opacity="${opacity}"/><g class="skyline-facade">${face}${facadeLines}${facadeBands}${edgeLight}${crownBand}<g class="skyline-window-grid" data-build-order="bottom-up">${windows}</g></g></g></g></g>`);
+    foreground.push(`<g class="skyline-${tier}" data-height="${height.toFixed(1)}" data-width="${width.toFixed(1)}" data-score="${score.toFixed(3)}" data-density="${density.toFixed(3)}"><title>${esc(label)}</title><g class="skyline-building-stage" data-building-id="${id}" clip-path="url(#${clipId})"><g class="${stageClass}"${stageStyle}><path class="skyline-building skyline-${tier}-${shape % 5}" d="${path}" fill="${buildingFill}" fill-opacity="${opacity}"/>${silhouetteRim}<g class="skyline-facade">${face}${glassSheen}${facadeLines}${facadeBands}${edgeLight}${crownBand}<g class="skyline-window-grid" data-build-order="bottom-up">${windows}</g></g></g></g>${towerPodium}</g>`);
     if (waterDepth && tier !== "house" && density > .04) {
       const reflectionHeight = Math.min(waterDepth - 3, Math.max(2, height * (tier === "landmark" ? .18 : tier === "highrise" ? .13 : .09)));
       const segments = tier === "landmark" || tier === "highrise" ? 3 : 2;
@@ -497,14 +516,59 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
     }
   }
 
-  for (let i = 0; i < backgroundLots; i++) {
-    const position = (i + .5) * (days.length - 1) / backgroundLots;
-    const density = skylineSample(densityScore, position);
-    const height = 5 + cityScale * (detail ? 5 : 3) + density * (detail ? 12 : 9) + skylineHash(i + 31) * 3;
-    const left = x + i * (w / backgroundLots) - .4;
-    const width = w / backgroundLots + .9;
-    const color = phase.palette.midrise[i % phase.palette.midrise.length];
-    background.push(`<rect class="skyline-background-building" x="${left.toFixed(1)}" y="${(base - height).toFixed(1)}" width="${width.toFixed(1)}" height="${height.toFixed(1)}" fill="${cinematic ? "url(#skylineMidFacade)" : color}" fill-opacity="${cinematic ? ".38" : ".26"}"/>`);
+  if (cinematic) {
+    const layerSpecs = detail
+      ? [
+        { name: "rear", count: Math.max(15, Math.round(lots * .48)), baseOffset: 5, minHeight: 8, heightScale: 29, opacity: .5 },
+        { name: "middle", count: Math.max(18, Math.round(lots * .62)), baseOffset: 2, minHeight: 11, heightScale: 39, opacity: .78 },
+      ]
+      : [
+        { name: "rear", count: 11, baseOffset: 4, minHeight: 6, heightScale: 17, opacity: .45 },
+        { name: "middle", count: 14, baseOffset: 1.5, minHeight: 8, heightScale: 22, opacity: .7 },
+      ];
+    for (const [depth, spec] of layerSpecs.entries()) {
+      const laneWidth = w / spec.count;
+      for (let i = 0; i < spec.count; i++) {
+        const position = clamp((i + .5 + (depth ? .18 : -.14)) * (days.length - 1) / spec.count, 0, days.length - 1);
+        const density = skylineSample(densityScore, position);
+        const nearbyHeight = Math.max(
+          skylineSample(heightScore, clamp(position - 1.35, 0, days.length - 1)),
+          skylineSample(heightScore, position),
+          skylineSample(heightScore, clamp(position + 1.35, 0, days.length - 1)),
+        );
+        const seed = skylineHash((depth + 3) * 1009 + i * 47);
+        if (density < .025 && nearbyHeight < .04 && (!positiveLogs.length || seed > .35)) continue;
+        const layerBase = base - spec.baseOffset;
+        const height = Math.min(
+          h * (depth ? .58 : .43),
+          spec.minHeight + cityScale * (depth ? 12 : 8) + nearbyHeight * spec.heightScale + density * 9 + seed * (depth ? 9 : 6),
+        );
+        const tier = !villageScale && height > h * (depth ? .36 : .31) && seed > .42 ? "highrise" : "midrise";
+        const shape = Math.floor(skylineHash(i * 73 + depth * 211 + 17) * 5);
+        const width = Math.min(detail ? 27 : 18, laneWidth * (1.22 + skylineHash(i * 89 + depth * 307) * .82));
+        const jitter = (skylineHash(i * 109 + depth * 401) - .5) * laneWidth * .72;
+        const left = clamp(x + i * laneWidth + jitter - width * .26, x - 2, x + w - width + 2);
+        const color = phase.palette[tier][(shape + i + depth) % phase.palette[tier].length];
+        const atmosphericColor = skylineMix(color, phase.sky[depth ? 0 : 1], depth ? .1 : .28);
+        const path = skylineShape(tier, shape, left, width, layerBase, height);
+        const shaftCount = depth && detail && width >= 9 ? clamp(Math.floor(width / 8), 1, 2) : 1;
+        const lightShafts = Array.from({ length: shaftCount }, (_, shaft) => {
+          const shaftX = left + width * ((shaft + 1) / (shaftCount + 1));
+          return `<path d="M${shaftX.toFixed(1)} ${(layerBase - height + Math.min(9, height * .28)).toFixed(1)}V${(layerBase - 3).toFixed(1)}" stroke="${phase.window}" stroke-opacity="${depth ? ".24" : ".11"}" stroke-width="${depth ? ".8" : ".55"}" stroke-dasharray="1.4 4"/>`;
+        }).join("");
+        districtLayers[depth].push(`<g class="skyline-district-building skyline-district-${spec.name}" data-depth="${depth + 1}" data-score="${nearbyHeight.toFixed(3)}"><path d="${path}" fill="${atmosphericColor}" fill-opacity="${spec.opacity}" stroke="${skylineMix(atmosphericColor, "#ffffff", .28)}" stroke-opacity="${depth ? ".16" : ".09"}" stroke-width=".45"/>${lightShafts}</g>`);
+      }
+    }
+  } else {
+    for (let i = 0; i < backgroundLots; i++) {
+      const position = (i + .5) * (days.length - 1) / backgroundLots;
+      const density = skylineSample(densityScore, position);
+      const height = 5 + cityScale * (detail ? 5 : 3) + density * (detail ? 12 : 9) + skylineHash(i + 31) * 3;
+      const left = x + i * (w / backgroundLots) - .4;
+      const width = w / backgroundLots + .9;
+      const color = phase.palette.midrise[i % phase.palette.midrise.length];
+      background.push(`<rect class="skyline-background-building" x="${left.toFixed(1)}" y="${(base - height).toFixed(1)}" width="${width.toFixed(1)}" height="${height.toFixed(1)}" fill="${color}" fill-opacity=".26"/>`);
+    }
   }
 
   for (let i = 0; i <= days.length; i++) {
@@ -649,6 +713,7 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
   const luminaryY = y + (detail ? 24 : 17);
   const luminaryR = detail ? 11 : 7;
   const moonHalo = phase.name === "night" ? `<circle class="skyline-moon-halo" cx="${luminaryX}" cy="${luminaryY}" r="${luminaryR * (cinematic ? 3.1 : 2.35)}" fill="#d8e9ff" fill-opacity="${cinematic ? ".035" : ".055"}"/><circle class="skyline-moon-halo" cx="${luminaryX}" cy="${luminaryY}" r="${luminaryR * (cinematic ? 2.05 : 1.55)}" fill="#d8e9ff" fill-opacity="${cinematic ? ".075" : ".07"}"/>` : "";
+  const luminaryGlow = cinematic ? `<circle class="skyline-luminary-glow" cx="${luminaryX}" cy="${luminaryY}" r="${luminaryR * (phase.name === "night" ? 3.5 : 4.6)}" fill="url(#skylineLuminaryGlow)"/>` : "";
   const atmosphericDust = cinematic ? Array.from({ length: detail ? 22 : 10 }, (_, index) => {
     const dustX = x + skylineHash(index * 107 + 37) * w;
     const dustY = y + h * .18 + skylineHash(index * 131 + 23) * h * .52;
@@ -656,8 +721,10 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
     return `<circle class="skyline-atmosphere-particle" cx="${dustX.toFixed(1)}" cy="${dustY.toFixed(1)}" r="${dustR.toFixed(2)}" fill="${phase.window}" fill-opacity="${phase.name === "night" ? ".12" : ".08"}"/>`;
   }).join("") : "";
   const horizonGlow = cinematic ? `<rect class="skyline-horizon-glow" x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#skylineHorizonGlow)"/>` : "";
+  const cityDepth = cinematic ? `<rect class="skyline-city-depth" x="${x}" y="${(base - Math.max(24, h * .42)).toFixed(1)}" width="${w}" height="${Math.max(28, h * .45).toFixed(1)}" fill="url(#skylineCityDepth)"/>` : "";
   const aerialHaze = cinematic ? `<rect class="skyline-horizon-haze" x="${x}" y="${(base - Math.max(18, h * .27)).toFixed(1)}" width="${w}" height="${Math.max(20, h * .3).toFixed(1)}" fill="url(#skylineHaze)"/>` : "";
   const vignette = cinematic ? `<rect class="skyline-vignette" x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="url(#skylineVignette)" pointer-events="none"/>` : "";
+  const grain = cinematic && detail ? `<rect class="skyline-grain" x="${x}" y="${y}" width="${w}" height="${h}" rx="7" filter="url(#skylineGrain)" opacity="${phase.name === "day" ? ".11" : ".08"}" pointer-events="none"/>` : "";
   const street = waterDepth
     ? `<path class="skyline-street skyline-shore" d="M${x} ${base}H${x + w}" stroke="${phase.window}" stroke-opacity=".62" stroke-width="1"/>${Array.from({ length: Math.floor(w / 58) }, (_, i) => { const sx = x + 20 + i * 58; return `<circle class="skyline-shore-light" cx="${sx}" cy="${base - 1}" r="1.05" fill="${phase.window}" fill-opacity=".88"/><path d="M${sx - 3} ${base + 2}h6" stroke="${phase.window}" stroke-opacity=".23" stroke-width=".6"/>`; }).join("")}`
     : `<path class="skyline-street" d="M${x} ${base - 2}H${x + w}V${y + h}H${x}Z" fill="#18232d" fill-opacity=".78"/><path d="M${x} ${base + 1}H${x + w}" stroke="${phase.window}" stroke-opacity=".52" stroke-dasharray="9 7" stroke-width=".7"/>${Array.from({ length: Math.floor(w / 62) }, (_, i) => { const sx = x + 24 + i * 62; return `<path d="M${sx} ${base - 2}v-8m-2 0h4" stroke="${phase.window}" stroke-opacity=".56" stroke-width=".8"/><circle cx="${sx}" cy="${base - 11}" r="1.1" fill="${phase.window}" fill-opacity=".9"/>`; }).join("")}`;
@@ -675,11 +742,12 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
       return `<g class="f skyline-greenway" style="${delay(4, .08, speed)}" data-token-streak="${boundedTokenStreak}" data-start-x="${start.toFixed(1)}" data-end-x="${end.toFixed(1)}" data-y="${greenwayY.toFixed(1)}"><title>${boundedTokenStreak}-day token streak</title><path d="M${start.toFixed(1)} ${greenwayY.toFixed(1)}H${end.toFixed(1)}" stroke="${phase.grass}" stroke-width="2.3" stroke-linecap="round"/><path d="M${start.toFixed(1)} ${(greenwayY - .25).toFixed(1)}H${end.toFixed(1)}" stroke="#f1ffd0" stroke-opacity=".42" stroke-width=".55" stroke-linecap="round"/>${dots}</g>`;
     })()
     : "";
-  const cinematicDefs = cinematic ? `<radialGradient id="skylineHorizonGlow" cx="52%" cy="92%" r="82%"><stop offset="0" stop-color="${phase.sky[2]}" stop-opacity=".48"/><stop offset=".5" stop-color="${phase.sky[1]}" stop-opacity=".13"/><stop offset="1" stop-color="${phase.sky[0]}" stop-opacity="0"/></radialGradient><linearGradient id="skylineHaze" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${phase.sky[2]}" stop-opacity="0"/><stop offset=".6" stop-color="${phase.sky[2]}" stop-opacity=".15"/><stop offset="1" stop-color="${phase.window}" stop-opacity=".08"/></linearGradient><linearGradient id="skylineFarFacade" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${skylineMix(phase.palette.midrise[0], "#ffffff", .18)}"/><stop offset="1" stop-color="${skylineMix(phase.palette.midrise[0], "#07101d", .48)}"/></linearGradient><linearGradient id="skylineMidFacade" x1="0" y1="0" x2="1" y2=".2"><stop stop-color="${skylineMix(phase.palette.midrise[1], "#ffffff", .14)}"/><stop offset=".55" stop-color="${phase.palette.midrise[0]}"/><stop offset="1" stop-color="${skylineMix(phase.palette.midrise[0], "#07101d", .42)}"/></linearGradient><linearGradient id="skylineCloud" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff"/><stop offset="1" stop-color="${phase.sky[2]}"/></linearGradient><radialGradient id="skylineVignette"><stop offset=".58" stop-color="#02050b" stop-opacity="0"/><stop offset="1" stop-color="#02050b" stop-opacity="${phase.name === "night" ? ".3" : ".16"}"/></radialGradient>` : "";
+  const cinematicDefs = cinematic ? `<radialGradient id="skylineHorizonGlow" cx="52%" cy="92%" r="82%"><stop offset="0" stop-color="${phase.sky[2]}" stop-opacity="${phase.name === "day" ? ".28" : ".48"}"/><stop offset=".5" stop-color="${phase.sky[1]}" stop-opacity=".11"/><stop offset="1" stop-color="${phase.sky[0]}" stop-opacity="0"/></radialGradient><radialGradient id="skylineLuminaryGlow"><stop stop-color="${phase.luminary}" stop-opacity=".24"/><stop offset=".34" stop-color="${phase.luminary}" stop-opacity=".1"/><stop offset="1" stop-color="${phase.luminary}" stop-opacity="0"/></radialGradient><linearGradient id="skylineCityDepth" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${phase.sky[1]}" stop-opacity="0"/><stop offset=".68" stop-color="${skylineMix(phase.sky[1], "#ffffff", .22)}" stop-opacity="${phase.name === "day" ? ".13" : ".08"}"/><stop offset="1" stop-color="${phase.palette.midrise[0]}" stop-opacity=".18"/></linearGradient><linearGradient id="skylineHaze" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${phase.sky[2]}" stop-opacity="0"/><stop offset=".6" stop-color="${phase.sky[2]}" stop-opacity="${phase.name === "day" ? ".09" : ".15"}"/><stop offset="1" stop-color="${phase.window}" stop-opacity=".06"/></linearGradient><linearGradient id="skylineFarFacade" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${skylineMix(phase.palette.midrise[0], "#ffffff", .18)}"/><stop offset="1" stop-color="${skylineMix(phase.palette.midrise[0], "#07101d", .56)}"/></linearGradient><linearGradient id="skylineMidFacade" x1="0" y1="0" x2="1" y2=".35"><stop stop-color="${skylineMix(phase.palette.midrise[1], "#ffffff", .2)}"/><stop offset=".5" stop-color="${phase.palette.midrise[0]}"/><stop offset="1" stop-color="${skylineMix(phase.palette.midrise[0], "#07101d", .56)}"/></linearGradient><linearGradient id="skylineCloud" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff"/><stop offset="1" stop-color="${skylineMix(phase.sky[1], "#ffffff", .72)}"/></linearGradient><radialGradient id="skylineVignette"><stop offset=".58" stop-color="#02050b" stop-opacity="0"/><stop offset="1" stop-color="#02050b" stop-opacity="${phase.name === "night" ? ".34" : ".22"}"/></radialGradient><filter id="skylineBuildingShadow" x="-10%" y="-12%" width="120%" height="125%" color-interpolation-filters="sRGB"><feDropShadow dx=".7" dy="1.2" stdDeviation=".85" flood-color="#03101a" flood-opacity="${phase.name === "day" ? ".58" : ".72"}"/></filter><filter id="skylineGrain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency=".72" numOctaves="2" seed="23"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 .14"/></feComponentTransfer></filter>` : "";
   const skyStops = cinematic
     ? `<stop stop-color="${skylineMix(phase.sky[0], "#02040a", phase.name === "night" ? .18 : .06)}"/><stop offset=".46" stop-color="${phase.sky[1]}"/><stop offset=".78" stop-color="${skylineMix(phase.sky[1], phase.sky[2], .58)}"/><stop offset="1" stop-color="${phase.sky[2]}"/>`
     : `<stop stop-color="${phase.sky[0]}"/><stop offset=".58" stop-color="${phase.sky[1]}"/><stop offset="1" stop-color="${phase.sky[2]}"/>`;
-  const svg = `<defs><linearGradient id="skylineSky" x1="0" y1="0" x2="0" y2="1">${skyStops}</linearGradient><linearGradient id="skylineWater" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${waterColors[0]}"/><stop offset=".55" stop-color="${cinematic ? skylineMix(waterColors[0], phase.sky[1], .2) : waterColors[0]}"/><stop offset="1" stop-color="${waterColors[1]}"/></linearGradient><radialGradient id="skylineLuminary"><stop stop-color="#fffde1"/><stop offset=".55" stop-color="${phase.luminary}"/><stop offset="1" stop-color="${skylineMix(phase.luminary, phase.sky[1], .18)}"/></radialGradient>${cinematicDefs}${defs.join("")}</defs><g clip-path="url(#skylineScene)"><rect data-sky="${phase.name}" data-skyline-style="${cinematic ? "cinematic" : "classic"}" data-city-scale="${cityScale.toFixed(3)}" x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="url(#skylineSky)"/>${horizonGlow}${atmosphericDust}${clouds}${stars}${moonHalo}<circle class="f skyline-luminary" style="${delay(2, .12, speed)}" cx="${luminaryX}" cy="${luminaryY}" r="${luminaryR}" fill="url(#skylineLuminary)"/>${farBackground.join("")}${background.join("")}${aerialHaze}${fabric}${water}${reflections.join("")}${foreground.join("")}${street}${greenway}${vignette}</g>`;
+  const foregroundFilter = cinematic && detail ? ` filter="url(#skylineBuildingShadow)"` : "";
+  const svg = `<defs><linearGradient id="skylineSky" x1="0" y1="0" x2="0" y2="1">${skyStops}</linearGradient><linearGradient id="skylineWater" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${waterColors[0]}"/><stop offset=".55" stop-color="${cinematic ? skylineMix(waterColors[0], phase.sky[1], .2) : waterColors[0]}"/><stop offset="1" stop-color="${waterColors[1]}"/></linearGradient><radialGradient id="skylineLuminary"><stop stop-color="#fffde1"/><stop offset=".55" stop-color="${phase.luminary}"/><stop offset="1" stop-color="${skylineMix(phase.luminary, phase.sky[1], .18)}"/></radialGradient>${cinematicDefs}${defs.join("")}</defs><g clip-path="url(#skylineScene)"><rect data-sky="${phase.name}" data-skyline-style="${cinematic ? "cinematic" : "classic"}" data-city-scale="${cityScale.toFixed(3)}" x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="url(#skylineSky)"/>${horizonGlow}${atmosphericDust}${clouds}${stars}${moonHalo}${luminaryGlow}<circle class="f skyline-luminary" style="${delay(2, .12, speed)}" cx="${luminaryX}" cy="${luminaryY}" r="${luminaryR}" fill="url(#skylineLuminary)"/>${cityDepth}${farBackground.join("")}${background.join("")}${districtLayers[0].join("")}${aerialHaze}${districtLayers[1].join("")}${fabric}${water}${reflections.join("")}<g class="skyline-foreground"${foregroundFilter}>${foreground.join("")}</g>${street}${greenway}${vignette}${grain}</g>`;
   const starCss = phase.stars ? `.sky-star{opacity:.18;animation:skylineStarTwinkle ${starCycle.toFixed(2)}s ease-in-out infinite}@keyframes skylineStarTwinkle{0%,100%{opacity:.16}50%{opacity:.52}}` : "";
   const atmosphereCss = cinematic ? `.skyline-cloud-bank{animation:skylineCloudDrift ${(24 / speed).toFixed(2)}s ease-in-out infinite alternate;transform-origin:center}@keyframes skylineCloudDrift{to{transform:translateX(${detail ? "6px" : "3px"})}}.skyline-horizon-haze{animation:skylineHazePulse ${(8 / speed).toFixed(2)}s ease-in-out infinite}@keyframes skylineHazePulse{50%{opacity:.72}}` : "";
   const extraCss = anim ? `${starCss}${atmosphereCss}.skyline-fabric{opacity:0;animation:fu ${(0.7 / speed).toFixed(2)}s cubic-bezier(.4,0,.2,1) forwards}.skyline-building-grow{clip-path:inset(100% 0 0 0) fill-box;animation:skylineBuildingGrow ${(0.8 / speed).toFixed(2)}s cubic-bezier(.2,.6,.2,1) forwards}@keyframes skylineBuildingGrow{to{clip-path:inset(0 0 0 0) fill-box}}` : "";

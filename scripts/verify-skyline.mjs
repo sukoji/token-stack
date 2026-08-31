@@ -78,7 +78,7 @@ function assertHealthySvg(svg, { label, compact, sky, stats, anim = false }) {
   assert.doesNotMatch(svg, /<(?:script|image)\b|(?:href|xlink:href)=["']https?:/i, `${label}: external or executable content`);
   assert.match(svg, new RegExp(`data-sky="${sky}"`), `${label}: wrong sky phase`);
   assertReferencesResolve(svg, label);
-  assert.ok(Buffer.byteLength(svg) < (compact ? 58_000 : 155_000), `${label}: SVG unexpectedly exceeds the verified size budget`);
+  assert.ok(Buffer.byteLength(svg) < (compact ? 68_000 : 190_000), `${label}: SVG unexpectedly exceeds the verified size budget`);
 
   const sceneHeight = compact ? 72 : 153;
   const dimensions = [...svg.matchAll(/<g class="skyline-(house|midrise|highrise|landmark)" data-height="([0-9.]+)" data-width="([0-9.]+)" data-score="([0-9.]+)" data-density="([0-9.]+)"/g)];
@@ -93,6 +93,16 @@ function assertHealthySvg(svg, { label, compact, sky, stats, anim = false }) {
     assert.ok(score >= 0 && score <= 1 && density >= 0 && density <= 1, `${label}: normalized building metadata is invalid`);
     if (tier === "landmark") assert.ok(height / width >= (compact ? 3 : 4) - .02, `${label}: landmark is not slender enough`);
     else assert.ok(width <= (compact ? 32 : 50), `${label}: ordinary building is too wide`);
+  }
+
+  const districts = [...svg.matchAll(/class="skyline-district-building skyline-district-(rear|middle)" data-depth="([12])" data-score="([0-9.]+)"/g)];
+  const hasTokenActivity = (stats.byDay ?? []).some((day) => Number(day.total) > 0);
+  assert.ok(districts.length <= (compact ? 25 : 46), `${label}: too many decorative district buildings`);
+  if (hasTokenActivity) {
+    assert.deepEqual(new Set(districts.map(([, , depth]) => depth)), new Set(["1", "2"]), `${label}: token activity needs rear and middle city depth`);
+    assert.ok(districts.every(([, , , score]) => Number(score) >= 0 && Number(score) <= 1), `${label}: district score is invalid`);
+  } else {
+    assert.equal(districts.length, 0, `${label}: zero token activity produced a decorative district`);
   }
 
   for (const [, radiusText] of svg.matchAll(/class="skyline-field"[\s\S]*?<circle[^>]+\br="([0-9.]+)"/g)) {

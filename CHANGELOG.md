@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.1
+
+- Turn each sampled token interval into a deterministic city district instead of presenting the primary buildings as a single flat row.
+- Add separate rear and middle depth planes with overlapping, activity-derived secondary buildings behind the token-height foreground.
+- Refine cinematic daylight with deeper glass and concrete palettes, directional facade shading, silhouette rims, podiums, sun glow, city-depth haze, building shadows, and subtle SVG grain.
+- Keep empty histories free of decorative district buildings and retain the `classic` palette and single-plane presentation.
+- Verify both depth planes, bounded district counts, and a 190 KB full / 68 KB compact animated SVG budget across the existing 88-render matrix.
+
 ## 0.5.0
 
 - Make the new cinematic Skyline the default while preserving the previous look with `--skyline-style classic`.

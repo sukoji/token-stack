@@ -27,6 +27,12 @@ test("skyline chart renders a night city for compact and activity cards", () => 
   assert.match(activity, /data-skyline-style="cinematic"/);
   assert.match(activity, /skyline-horizon-glow/);
   assert.match(activity, /skyline-far-building/);
+  assert.match(activity, /skyline-city-depth/);
+  assert.match(activity, /skyline-district-rear" data-depth="1"/);
+  assert.match(activity, /skyline-district-middle" data-depth="2"/);
+  assert.ok((activity.match(/class="skyline-district-building/g) ?? []).length > (activity.match(/class="skyline-(?:house|midrise|highrise|landmark)"/g) ?? []).length);
+  assert.match(activity, /skyline-glass-sheen/);
+  assert.match(activity, /skyline-grain/);
   assert.match(activity, /skyline-edge-light/);
   assert.match(activity, /skyline-fabric/);
   assert.match(activity, /skyline-house/);
@@ -53,7 +59,7 @@ test("classic skyline remains available without cinematic material layers", () =
   };
   const classic = renderActivity(stats, { anim: false, chart: "skyline", sky: "night", skylineStyle: "classic" });
   assert.match(classic, /data-skyline-style="classic"/);
-  assert.doesNotMatch(classic, /skyline-horizon-glow|skyline-far-building|skyline-edge-light|skylineMaterial/);
+  assert.doesNotMatch(classic, /skyline-horizon-glow|skyline-far-building|skyline-district-building|skyline-edge-light|skylineMaterial|skyline-grain/);
   assert.throws(() => renderActivity(stats, { anim: false, chart: "skyline", skylineStyle: "photoreal" }), /Unknown skyline style/);
 });
 
@@ -73,7 +79,7 @@ test("animated skyline grows its facade and windows from the street upward", () 
     assert.match(animated, new RegExp(`<clipPath id="${clipId}"><path d="${path}"/>`));
     assert.ok(Number(stageDelay) >= 0);
   }
-  assert.match(animated, /<g class="skyline-building-grow" style="animation-delay:[0-9.]+s"><path class="skyline-building [^"]+"[^>]*\/><g class="skyline-facade">[\s\S]*?<g class="skyline-window-grid" data-build-order="bottom-up">/);
+  assert.match(animated, /<g class="skyline-building-grow" style="animation-delay:[0-9.]+s"><path class="skyline-building [^"]+"[^>]*\/>[\s\S]*?<g class="skyline-facade">[\s\S]*?<g class="skyline-window-grid" data-build-order="bottom-up">/);
   assert.doesNotMatch(animated, /skyline-window-grow|skylineWindowBuild/);
 
   const staticSvg = renderActivity(stats, { anim: false, chart: "skyline", sky: "night" });
