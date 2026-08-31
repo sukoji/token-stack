@@ -185,3 +185,29 @@
 
 - OpenAI's public documentation does not specify the local Codex rollout JSONL schema, so compatibility is fixture- and real-log-tested rather than guaranteed as a public API contract.
 - GitHub does not automatically use `assets/social-preview.png` as repository metadata; upload the refreshed image once under repository Settings → Social preview.
+
+## 2026-08-31 - Motion Override and Grass Restore v0.7.1
+
+### Work summary
+
+- Traced the apparently frozen profile card to the host Windows animation setting (`MinAnimate=0`), which makes browsers match `prefers-reduced-motion: reduce` and correctly triggered the SVG's accessibility stop rule.
+- Added `--motion-policy system|always`: `system` remains the accessible default, while `always` omits the reduced-motion media rule for explicitly animated published cards.
+- Regenerated the full-width Activity Skyline with forced motion so traffic, pedestrians, water, and atmosphere keep moving on the current profile.
+- Restored `token-stack-summary-compact.svg` to the distinct 119-day GitHub-style token grass grid instead of duplicating the city in both profile slots.
+
+### Verification
+
+- `npm test`: 51 tests passed.
+- `npm run verify:skyline`: 88 renders passed across 11 profiles; largest SVG was 244,075 bytes.
+- `npm run verify:city`: four palette/base variants rendered successfully.
+- `npm run verify:pack`: package installed and executed successfully from a spaced Unicode path.
+- `npm pack --dry-run --json`: package `@sukojin/token-stack@0.7.1` validated at 50,098 bytes packed and 174,017 bytes unpacked.
+- Live assets verified structurally: Activity contains the Skyline and traffic keyframes without a reduced-motion override; compact summary contains 119 grass cells and no city metadata.
+
+### Commits
+
+- `60e8077` - Fix profile motion and restore token grass.
+
+### Blockers
+
+- None.
