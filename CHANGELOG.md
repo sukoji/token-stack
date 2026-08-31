@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.3
+
+- Animate each pedestrian's arms and legs in opposing walk-cycle phases while adding a restrained body bob, independent of the existing street traversal.
+- Keep limb animation deterministic, speed-aware, static under `--no-anim`, and disabled by the default reduced-motion policy.
+
 ## 0.7.2
 
 - Replace stick-figure pedestrians with four compact human silhouettes composed from distinct heads, hair, torsos, clothing, limbs, shoes, and occasional bags or backpacks.
