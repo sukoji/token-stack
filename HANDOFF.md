@@ -26,6 +26,32 @@
 
 - None.
 
+## 2026-08-31 - Realistic Atmospheric Depth v0.5.4
+
+### Work summary
+
+- Audited the supplied live daylight card and identified equal layer sharpness, saturated teal materials, repeated rounded crowns, uniform bright windows, cartoon-like sky accents, and an overly broad reflection as the main sources of the futuristic look.
+- Replaced cinematic daylight with neutral glass, concrete, stone, and muted sky colors, plus lower daylight window density and facade-grid contrast.
+- Replaced rounded mid-rise and high-rise silhouettes with rectilinear setbacks and flat rooflines.
+- Lowered and desaturated rear/middle districts, reduced secondary high-rise frequency, and added separate rear/middle Gaussian depth filters with an intervening haze plane.
+- Reduced cinematic water depth, daylight reflection strength, sun size, and cloud opacity while preserving the ambient animation and token-bearing foreground.
+
+### Verification
+
+- `npm test`: 41 tests passed.
+- `npm run verify:skyline`: 88 renders passed across 11 profiles; largest SVG was 216,153 bytes.
+- `npm run verify:pack`: packed, installed, and executed successfully from a spaced Unicode path.
+- `npm pack --dry-run --json`: package `@sukojin/token-stack@0.5.4` validated at 43,079 bytes packed and 145,677 bytes unpacked.
+- Chromium visual QA completed for the full phase/profile matrix and the live 6.64B-token, 30-day daylight card.
+
+### Commits
+
+- `e841a11` - Ground the skyline in realistic depth.
+
+### Blockers
+
+- None.
+
 ## 2026-08-31 - Layered Skyline v0.5.1
 
 ### Work summary
