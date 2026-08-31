@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.4
+
+- Replace the saturated cinematic daylight palette with neutral glass, concrete, stone, and muted sky colors.
+- Replace repeated rounded mid-rise and high-rise crowns with rectilinear setbacks and flat architectural rooflines.
+- Reduce daylight window density, brightness, facade grids, cloud prominence, sun size, and mirrored-water intensity.
+- Add separate rear and middle depth filters plus a near-horizon haze plane so only the data-bearing foreground stays fully sharp.
+- Lower and desaturate secondary districts while preserving foreground token-height contrast and the `classic` rendering path.
+
 ## 0.5.3
 
 - Keep animated cinematic cities subtly alive after construction completes.

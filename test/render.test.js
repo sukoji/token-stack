@@ -32,6 +32,9 @@ test("skyline chart renders a night city for compact and activity cards", () => 
   assert.match(activity, /skyline-horizon-glow/);
   assert.match(activity, /skyline-far-building/);
   assert.match(activity, /skyline-city-depth/);
+  assert.match(activity, /class="skyline-district-plane skyline-district-plane-rear" filter="url\(#skylineRearDepth\)"/);
+  assert.match(activity, /class="skyline-district-plane skyline-district-plane-middle" filter="url\(#skylineMiddleDepth\)"/);
+  assert.match(activity, /skyline-near-haze/);
   assert.match(activity, /skyline-district-rear" data-depth="1"/);
   assert.match(activity, /skyline-district-middle" data-depth="2"/);
   assert.ok((activity.match(/class="skyline-district-building/g) ?? []).length > (activity.match(/class="skyline-(?:house|midrise|highrise|landmark)"/g) ?? []).length);
@@ -65,7 +68,7 @@ test("classic skyline remains available without cinematic material layers", () =
   };
   const classic = renderActivity(stats, { anim: false, chart: "skyline", sky: "night", skylineStyle: "classic" });
   assert.match(classic, /data-skyline-style="classic"/);
-  assert.doesNotMatch(classic, /skyline-horizon-glow|skyline-far-building|skyline-district-building|skyline-edge-light|skylineMaterial|skyline-grain/);
+  assert.doesNotMatch(classic, /skyline-horizon-glow|skyline-far-building|skyline-district-building|skyline-district-plane|skyline-near-haze|skylineRearDepth|skyline-edge-light|skylineMaterial|skyline-grain/);
   assert.throws(() => renderActivity(stats, { anim: false, chart: "skyline", skylineStyle: "photoreal" }), /Unknown skyline style/);
 });
 
@@ -114,6 +117,7 @@ test("skyline stars stay in place and use a slow reduced-motion-safe twinkle", (
 
   const day = renderActivity(stats, { anim: true, chart: "skyline", sky: "day" });
   assert.doesNotMatch(day, /class="sky-star"/);
+  assert.doesNotMatch(day, /class="skyline-(?:midrise|highrise)-2" d="[^"]*Q/);
   assert.doesNotMatch(day, /class="[^"]*skyline-window-glint/);
   assert.doesNotMatch(day, /@keyframes skylineWindowGlint/);
   assert.match(day, /class="skyline-water-ripple" style="animation-delay:-[0-9.]+s;animation-duration:[0-9.]+s"/);
