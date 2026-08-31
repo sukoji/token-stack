@@ -211,3 +211,29 @@
 ### Blockers
 
 - None.
+
+## 2026-08-31 - Detailed City Pedestrians v0.7.2
+
+### Work summary
+
+- Replaced the single-path stick figures with four deterministic human silhouettes at the same street scale.
+- Each pedestrian now has a shaped head, hair, neck, torso, clothed arms and hands, separate lower body and legs, and shoes; variants use different skin, hair, clothing, and trouser colors.
+- Added a skirted silhouette plus briefcase and backpack variants so the crowd does not read as repeated icons.
+- Preserved the metric-derived pedestrian count and restrained horizontal walking animation.
+
+### Verification
+
+- `npm test`: 51 tests passed, including anatomy and variant assertions.
+- `npm run verify:skyline`: 88 renders passed across 11 profiles.
+- `npm run verify:city`: four palette/base variants rendered successfully.
+- `npm run verify:pack`: package installed and executed successfully from a spaced Unicode path.
+- `npm pack --dry-run --json`: package `@sukojin/token-stack@0.7.2` validated at 50,760 bytes packed and 175,971 bytes unpacked.
+- Chromium visual QA completed at 3x scale against the live Activity Skyline; four pedestrians read as colored human silhouettes and remain correctly grounded at the shoreline.
+
+### Commits
+
+- `2e412ed` - Render detailed city pedestrians.
+
+### Blockers
+
+- None.
