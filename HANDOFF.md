@@ -155,3 +155,33 @@
 ### Blockers
 
 - None for v0.6.0. Codex still contributes session counts to the `agents` card but not token totals to token-based cards; adding Codex token ingestion remains a separate data-model feature.
+
+## 2026-08-31 - Codex Metrics and Custom City Life v0.7.0
+
+### Work summary
+
+- Added Codex token ingestion across `$CODEX_HOME/sessions`, `~/.codex/sessions`, and sibling archives, with cumulative-delta handling, cache-subset normalization, reset recovery, copied-snapshot de-duplication, model/cwd tracking, and provider-scoped history merges.
+- Kept Codex product telemetry unpriced; mixed cards and terminal stats now identify the dollar value as a Claude-only estimate.
+- Added `--city-palette natural|graphite|copper|evergreen`, `--city-base waterfront|park|transit`, and `--city-motion auto|off`, preserving `natural + waterfront` as the default composition.
+- Added metric-driven street life: recent sessions determine up to five vehicles and active-project breadth determines up to five pedestrians. The full legend, SVG metadata, accessible description, and reduced-motion rules expose and explain these signals.
+- Refreshed tracked cards with live Claude Code + Codex aggregates, added a four-variant visual gallery, and replaced the outdated social preview with a reproducible HTML/CSS composition using the current Activity card.
+- Updated README positioning, provider/cost caveats, customization examples, npm search keywords, and the v0.7.0 changelog.
+
+### Verification
+
+- `npm test`: 49 tests passed.
+- `npm run verify:skyline`: 88 renders passed across 11 profiles and four phases; largest SVG was 244,075 bytes.
+- `npm run verify:city`: four palette/base combinations rendered and passed Chromium visual QA.
+- `npm run verify:pack`: packed install and CLI execution passed from a spaced Unicode path.
+- `npm pack --dry-run --json`: package `@sukojin/token-stack@0.7.0` validated at 49,726 bytes packed and 172,818 bytes unpacked.
+- Real local Codex scan: 25,004 token events across 38 sessions produced 3.09B additive tokens without pricing; the large first scan completed in about 43 seconds.
+- Live Activity visual QA: 7.98B tokens in the 30-day window, `CLAUDE EST.` cost label, 25/30 active days, 56 recent sessions, three active projects, five vehicles, and four pedestrians rendered cleanly.
+
+### Commits
+
+- `4876105` - Add Codex metrics and customizable city life.
+
+### Blockers
+
+- OpenAI's public documentation does not specify the local Codex rollout JSONL schema, so compatibility is fixture- and real-log-tested rather than guaranteed as a public API contract.
+- GitHub does not automatically use `assets/social-preview.png` as repository metadata; upload the refreshed image once under repository Settings → Social preview.
