@@ -42,6 +42,10 @@ test("skyline chart renders a night city for compact and activity cards", () => 
   assert.match(activity, /skyline-grain/);
   assert.match(activity, /skyline-district-side/);
   assert.match(activity, /skylineReflectionMask/);
+  assert.match(activity, /data-cluster-count="[1-5]"/);
+  assert.match(activity, /data-cluster="[0-9.]+" data-architecture="(?:masonry|residential|office|glass|civic)"/);
+  assert.match(activity, /class="skyline-architecture skyline-facade-(?:masonry|residential|office|glass|civic)"/);
+  assert.match(activity, /data-building-reflection="[^"]+" data-segment="[1-6]"/);
   assert.match(activity, /skyline-edge-light/);
   assert.match(activity, /skyline-fabric/);
   assert.match(activity, /skyline-house/);
@@ -51,7 +55,12 @@ test("skyline chart renders a night city for compact and activity cards", () => 
   assert.match(activity, /skyline-street/);
   assert.match(activity, /class="f skyline-readout\b/);
   assert.match(activity, /class="f skyline-header"/);
-  assert.match(activity, /DAILY TOKENS → HEIGHT/);
+  assert.match(activity, /BUILDING HEIGHT/);
+  assert.match(activity, /DAILY TOKENS/);
+  assert.match(activity, /CITY DENSITY/);
+  assert.match(activity, /GREEN ROUTE/);
+  assert.match(activity, /class="f skyline-header-metrics"[^>]+data-window-tokens="19300000"[^>]+data-window-cost="9.00"[^>]+data-window-days="5"/);
+  assert.match(activity, />TOKENS<|>EST\. COST<|>WINDOW</);
   assert.match(activity, /class="f skyline-greenway"[^>]+data-token-streak="4"/);
   assert.match(activity, /<desc>Building height represents daily tokens\./);
   assert.match(activity, /<rect x="14" y="31" width="467" height="148" rx="7"\/>/);
@@ -69,6 +78,7 @@ test("classic skyline remains available without cinematic material layers", () =
   const classic = renderActivity(stats, { anim: false, chart: "skyline", sky: "night", skylineStyle: "classic" });
   assert.match(classic, /data-skyline-style="classic"/);
   assert.doesNotMatch(classic, /skyline-horizon-glow|skyline-far-building|skyline-district-building|skyline-district-plane|skyline-near-haze|skylineRearDepth|skyline-edge-light|skylineMaterial|skyline-grain/);
+  assert.doesNotMatch(classic, /skyline-architecture|data-building-reflection/);
   assert.throws(() => renderActivity(stats, { anim: false, chart: "skyline", skylineStyle: "photoreal" }), /Unknown skyline style/);
 });
 
@@ -148,7 +158,7 @@ test("skyline city readout uses only daily token activity and stays accessible w
 
   const compact = renderSummaryCompact(stats, { anim: false, chart: "skyline", sky: "day" });
   assert.doesNotMatch(compact, /skyline-readout|skyline-greenway/);
-  assert.match(compact, /<desc>Building height represents daily tokens\. This 6-day window has 4 token-active days\./);
+  assert.match(compact, /<desc>Building height represents daily tokens\. Layered city density represents sustained token activity\. This 6-day window has 4 token-active days\./);
   assert.match(compact, /3d token streak/);
 
   const noTrailingRun = renderActivity({ ...stats, byDay: [...byDay.slice(0, -1), { ...byDay.at(-1), total: 0 }], streak: 50 }, { anim: false, chart: "skyline", sky: "day" });
@@ -182,12 +192,18 @@ test("metropolis skyline preserves height contrast and renders a layered night w
   assert.ok(heights.at(-1) - p20 >= 35);
   assert.ok(p90 / p20 >= 1.8);
   assert.match(svg, /data-city-scale="1\.000"/);
+  assert.match(svg, /data-cluster-count="4"/);
   assert.match(svg, /skyline-water/);
   assert.match(svg, /skyline-reflection/);
   assert.match(svg, /skyline-moon-halo/);
   assert.match(svg, /skyline-window-warm/);
   assert.match(svg, /skyline-window-cool/);
   assert.match(svg, /skyline-crown-band/);
+  const architectures = new Set([...svg.matchAll(/data-architecture="([^"]+)"/g)].map((match) => match[1]));
+  assert.ok(architectures.size >= 3);
+  assert.ok([...architectures].every((architecture) => ["masonry", "residential", "office", "glass", "civic"].includes(architecture)));
+  const reflectionSegments = [...svg.matchAll(/data-building-reflection="([^"]+)" data-segment="([1-6])"/g)];
+  assert.ok(reflectionSegments.length > 0);
   const landmarks = svg.match(/class="skyline-landmark"/g) ?? [];
   assert.ok(landmarks.length >= 1 && landmarks.length <= 2);
   const landmarkDimensions = [...svg.matchAll(/class="skyline-landmark" data-height="([0-9.]+)" data-width="([0-9.]+)"/g)];
@@ -222,6 +238,7 @@ test("all-zero skyline is a field rather than an empty block chart", () => {
   const svg = renderActivity(stats, { anim: false, chart: "skyline", sky: "day" });
   assert.match(svg, /skyline-field/);
   assert.doesNotMatch(svg, /skyline-landmark/);
+  assert.match(svg, /data-cluster-count="0"/);
 });
 
 test("skyline does not turn a sustained activity plateau into repeated towers", () => {

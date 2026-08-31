@@ -78,31 +78,50 @@ function assertHealthySvg(svg, { label, compact, sky, stats, anim = false }) {
   assert.doesNotMatch(svg, /<(?:script|image)\b|(?:href|xlink:href)=["']https?:/i, `${label}: external or executable content`);
   assert.match(svg, new RegExp(`data-sky="${sky}"`), `${label}: wrong sky phase`);
   assertReferencesResolve(svg, label);
-  assert.ok(Buffer.byteLength(svg) < (compact ? 82_000 : 240_000), `${label}: SVG unexpectedly exceeds the verified size budget`);
+  assert.ok(Buffer.byteLength(svg) < (compact ? 82_000 : 260_000), `${label}: SVG unexpectedly exceeds the verified size budget`);
 
   const sceneHeight = compact ? 72 : 153;
-  const dimensions = [...svg.matchAll(/<g class="skyline-(house|midrise|highrise|landmark)" data-height="([0-9.]+)" data-width="([0-9.]+)" data-score="([0-9.]+)" data-density="([0-9.]+)"/g)];
+  const dimensions = [...svg.matchAll(/<g class="skyline-(house|midrise|highrise|landmark)" data-height="([0-9.]+)" data-width="([0-9.]+)" data-score="([0-9.]+)" data-density="([0-9.]+)" data-cluster="([0-9.]+)" data-architecture="([^"]+)"/g)];
   assert.ok(dimensions.length <= (compact ? 31 : 50), `${label}: too many foreground buildings`);
-  for (const [, tier, heightText, widthText, scoreText, densityText] of dimensions) {
+  for (const [, tier, heightText, widthText, scoreText, densityText, clusterText, architecture] of dimensions) {
     const height = Number(heightText);
     const width = Number(widthText);
     const score = Number(scoreText);
     const density = Number(densityText);
+    const cluster = Number(clusterText);
     assert.ok(Number.isFinite(height) && height > 0 && height <= sceneHeight * .78 + .11, `${label}: building height ${height} is outside the scene`);
     assert.ok(Number.isFinite(width) && width > 0, `${label}: building width ${width} is invalid`);
     assert.ok(score >= 0 && score <= 1 && density >= 0 && density <= 1, `${label}: normalized building metadata is invalid`);
+    assert.ok(cluster >= 0 && cluster <= 1, `${label}: normalized cluster metadata is invalid`);
+    assert.ok(["masonry", "residential", "office", "glass", "civic"].includes(architecture), `${label}: unknown architecture ${architecture}`);
     if (tier === "landmark") assert.ok(height / width >= (compact ? 3 : 4) - .02, `${label}: landmark is not slender enough`);
     else assert.ok(width <= (compact ? 32 : 50), `${label}: ordinary building is too wide`);
   }
 
-  const districts = [...svg.matchAll(/class="skyline-district-building skyline-district-(rear|middle)" data-depth="([12])" data-score="([0-9.]+)"/g)];
+  const districts = [...svg.matchAll(/class="skyline-district-building skyline-district-(rear|middle)" data-depth="([12])" data-score="([0-9.]+)" data-cluster="([0-9.]+)"/g)];
   const hasTokenActivity = (stats.byDay ?? []).some((day) => Number(day.total) > 0);
+  const clusterCount = Number(svg.match(/data-cluster-count="([0-5])"/)?.[1]);
+  assert.equal(Number.isInteger(clusterCount), true, `${label}: cluster count metadata is missing`);
   assert.ok(districts.length <= (compact ? 25 : 64), `${label}: too many decorative district buildings`);
   if (hasTokenActivity) {
     assert.deepEqual(new Set(districts.map(([, , depth]) => depth)), new Set(["1", "2"]), `${label}: token activity needs rear and middle city depth`);
-    assert.ok(districts.every(([, , , score]) => Number(score) >= 0 && Number(score) <= 1), `${label}: district score is invalid`);
+    assert.ok(clusterCount >= 1 && clusterCount <= 5, `${label}: active skyline needs one to five city clusters`);
+    assert.ok(districts.every(([, , , score, cluster]) => Number(score) >= 0 && Number(score) <= 1 && Number(cluster) >= 0 && Number(cluster) <= 1), `${label}: district metadata is invalid`);
   } else {
+    assert.equal(clusterCount, 0, `${label}: zero token activity produced a city cluster`);
     assert.equal(districts.length, 0, `${label}: zero token activity produced a decorative district`);
+  }
+
+  const reflectionSegments = [...svg.matchAll(/data-building-reflection="([^"]+)" data-segment="([1-6])"/g)];
+  const reflectionsByBuilding = new Map();
+  for (const match of reflectionSegments) {
+    const buildingSegments = reflectionsByBuilding.get(match[1]) ?? [];
+    buildingSegments.push(match);
+    reflectionsByBuilding.set(match[1], buildingSegments);
+  }
+  for (const [buildingId, segments] of reflectionsByBuilding) {
+    assert.ok(segments.length >= (compact ? 2 : 3) && segments.length <= (compact ? 4 : 6), `${label}: ${buildingId} reflection is not naturally segmented`);
+    assert.deepEqual(segments.map((match) => Number(match[2])), Array.from({ length: segments.length }, (_, index) => index + 1), `${label}: ${buildingId} reflection segments are out of order`);
   }
 
   for (const [, radiusText] of svg.matchAll(/class="skyline-field"[\s\S]*?<circle[^>]+\br="([0-9.]+)"/g)) {
@@ -136,7 +155,10 @@ function assertHealthySvg(svg, { label, compact, sky, stats, anim = false }) {
   } else {
     const readouts = svg.match(/class="f skyline-readout\b/g) ?? [];
     assert.equal(readouts.length, 1, `${label}: full card needs one city readout`);
-    assert.match(svg, /DAILY TOKENS → HEIGHT/, `${label}: full card lost its height explanation`);
+    assert.match(svg, /BUILDING HEIGHT/, `${label}: full card lost its height encoding label`);
+    assert.match(svg, /CITY DENSITY/, `${label}: full card lost its density encoding label`);
+    assert.match(svg, /GREEN ROUTE/, `${label}: full card lost its streak encoding label`);
+    assert.match(svg, /class="f skyline-header-metrics"[^>]+data-window-tokens="[0-9]+"[^>]+data-window-cost="[0-9.]+"[^>]+data-window-days="[0-9]+"/, `${label}: full card lost its labeled header metrics`);
     assert.match(svg, /class="skyline-legend-rule" d="M14 199H481"/, `${label}: full card lost its city legend band`);
     assert.match(svg, new RegExp(`data-active-days="${signals.activeDays}"`), `${label}: readout active-day count disagrees with daily token data`);
     assert.match(svg, new RegExp(`data-window-days="${signals.windowDays}"`), `${label}: readout window length disagrees with daily token data`);

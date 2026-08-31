@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0
+
+- Compose one to five deterministic activity clusters from the selected token window so the rear, middle, and foreground layers form recognizable districts instead of an evenly distributed row.
+- Give foreground buildings glass, office, residential, masonry, or civic architecture with type-specific roof profiles, facade lines, balconies, cornices, and mechanical bands.
+- Extend foreground buildings into individually segmented, tapered water reflections while reducing the opacity of the broad reflected city mass.
+- Redesign the Activity Skyline header as labeled `TOKENS`, `EST. COST`, and `WINDOW` metrics.
+- Redesign the lower legend as a two-level visual key for `BUILDING HEIGHT / DAILY TOKENS`, `CITY DENSITY / ACTIVE DAYS`, and `GREEN ROUTE / CURRENT STREAK`.
+- Preserve deterministic output, the existing token-height semantics, reduced-motion behavior, compact mode, and the `classic` renderer.
+
 ## 0.5.4
 
 - Replace the saturated cinematic daylight palette with neutral glass, concrete, stone, and muted sky colors.
