@@ -86,10 +86,47 @@ test("CLI validates city composition options before reading local activity", () 
     ["--city-palette", "neon", /City palette must be/],
     ["--city-base", "ocean", /City base must be/],
     ["--city-motion", "fast", /City motion must be/],
+    ["--weather", "storm", /Weather must be/],
+    ["--city-season", "monsoon", /City season must be/],
+    ["--preset", "unknown", /Unknown preset/],
   ]) {
     const result = run(["generate", flag, value]);
     assert.equal(result.status, 1);
     assert.match(result.stderr, message);
+  }
+});
+
+test("CLI atmosphere presets render a local gallery and explicit options win", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "token-stack-preview-"));
+  try {
+    const historyFile = path.join(temp, "history.json");
+    const source = path.join(temp, "empty-source");
+    const out = path.join(temp, "gallery");
+    fs.mkdirSync(source);
+    saveHistory({ version: 1, days: toDayRecords([{
+      ts: "2026-07-14T01:00:00Z", model: "claude-sonnet-4-6", input: 120, output: 30,
+      cacheRead: 0, cacheWrite: 0, project: "demo", sessionId: "claude-1", agent: "claude-code",
+    }]) }, historyFile);
+
+    const preview = run(["preview", "--provider", "claude", "--source", source, "--history", historyFile, "--days", "1", "-o", out]);
+    assert.equal(preview.status, 0, preview.stderr);
+    assert.match(preview.stdout, /token-stack-preview\.html/);
+    assert.equal(fs.existsSync(path.join(out, "token-stack-preview.html")), true);
+    for (const name of ["default", "rainy-noir", "autumn-park", "winter-transit", "evergreen-mist"]) {
+      assert.equal(fs.existsSync(path.join(out, `token-stack-${name}.svg`)), true);
+    }
+    const html = fs.readFileSync(path.join(out, "token-stack-preview.html"), "utf8");
+    assert.match(html, /Weather and season are decorative, never token metrics\./);
+
+    const override = path.join(temp, "override.svg");
+    const generated = run(["generate", "--card", "activity", "--chart", "skyline", "--weather", "clear", "--preset", "rainy-noir", "--sky", "day", "--provider", "claude", "--source", source, "--history", historyFile, "--days", "1", "-o", override]);
+    assert.equal(generated.status, 0, generated.stderr);
+    const svg = fs.readFileSync(override, "utf8");
+    assert.match(svg, /data-sky="day"/);
+    assert.match(svg, /data-city-palette="graphite" data-city-base="transit"/);
+    assert.match(svg, /data-weather="clear"/);
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
   }
 });
 

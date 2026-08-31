@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0
+
+- Add restrained `clear`, `cloudy`, `mist`, `rain`, and `snow` Skyline atmospheres with deterministic local-date `auto` selection and reduced-motion-safe animation.
+- Add calendar-aware spring, summer, autumn, and winter city treatments without changing token, session, project, or streak semantics.
+- Add five composable city presets while preserving the existing natural waterfront as the unchanged default; explicit city flags always override preset values.
+- Add a `preview` command that renders every preset with live local activity into a responsive HTML gallery for quick comparison.
+- Mark weather and season as decorative in accessible SVG descriptions and keep all atmosphere rendering local, deterministic, and free of location or weather API requests.
+
 ## 0.7.3
 
 - Animate each pedestrian's arms and legs in opposing walk-cycle phases while adding a restrained body bob, independent of the existing street traversal.

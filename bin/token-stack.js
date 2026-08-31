@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import {
   collectEntries, collectCodexSessions, collectAntigravitySessions,
@@ -15,6 +16,15 @@ const CITY_PALETTES = ["natural", "graphite", "copper", "evergreen"];
 const CITY_BASES = ["waterfront", "park", "transit"];
 const CITY_MOTIONS = ["auto", "off"];
 const MOTION_POLICIES = ["system", "always"];
+const CITY_WEATHERS = ["auto", "clear", "cloudy", "mist", "rain", "snow"];
+const CITY_SEASONS = ["auto", "spring", "summer", "autumn", "winter", "off"];
+const CITY_PRESETS = {
+  default: { cityPalette: "natural", cityBase: "waterfront", weather: "clear", citySeason: "off", sky: "auto" },
+  "rainy-noir": { cityPalette: "graphite", cityBase: "transit", weather: "rain", citySeason: "off", sky: "night" },
+  "autumn-park": { cityPalette: "copper", cityBase: "park", weather: "mist", citySeason: "autumn", sky: "dusk" },
+  "winter-transit": { cityPalette: "graphite", cityBase: "transit", weather: "snow", citySeason: "winter", sky: "dawn" },
+  "evergreen-mist": { cityPalette: "evergreen", cityBase: "waterfront", weather: "mist", citySeason: "spring", sky: "dawn" },
+};
 
 const HELP = `token-stack — animated activity cards from local Claude Code and Codex sessions
 
@@ -26,6 +36,7 @@ Commands:
   sync        Upload card(s) to a GitHub gist and print embed links
   stats       Print a usage summary to the terminal
   json        Print aggregated stats as JSON
+  preview     Render all atmosphere presets into a local HTML gallery
 
 Options:
   --card <name>     summary | activity | models | agents | passport | all   (default: summary)
@@ -36,6 +47,9 @@ Options:
   --city-palette <name> natural | graphite | copper | evergreen (default: natural)
   --city-base <name> waterfront | park | transit             (default: waterfront)
   --city-motion <name> auto | off                             (default: auto)
+  --weather <name>  auto | clear | cloudy | mist | rain | snow (default: clear)
+  --city-season <name> auto | spring | summer | autumn | winter | off (default: off)
+  --preset <name>   ${Object.keys(CITY_PRESETS).join(" | ")} (default: default)
   --breakdown <mode> summary bars: log | raw                  (default: log)
   --theme <name>    ${Object.keys(THEMES).join(" | ")}   (default: dark)
   --days <n>        window for the activity chart        (default: 30)
@@ -66,6 +80,9 @@ Setup:
 `;
 
 function parseArgs(argv) {
+  const presetAt = argv.lastIndexOf("--preset");
+  const preset = presetAt >= 0 ? argv[presetAt + 1] : "default";
+  if (!CITY_PRESETS[preset]) throw new Error(`Unknown preset "${preset}". Available: ${Object.keys(CITY_PRESETS).join(", ")}`);
   const opts = {
     command: "generate",
     card: "summary",
@@ -92,6 +109,10 @@ function parseArgs(argv) {
     cityBase: "waterfront",
     cityMotion: "auto",
     motionPolicy: "system",
+    weather: "clear",
+    citySeason: "off",
+    preset,
+    ...CITY_PRESETS[preset],
   };
   const args = [...argv];
   if (args[0] && !args[0].startsWith("-")) opts.command = args.shift();
@@ -111,6 +132,9 @@ function parseArgs(argv) {
       case "--city-palette": opts.cityPalette = args.shift(); break;
       case "--city-base": opts.cityBase = args.shift(); break;
       case "--city-motion": opts.cityMotion = args.shift(); break;
+      case "--weather": opts.weather = args.shift(); break;
+      case "--city-season": opts.citySeason = args.shift(); break;
+      case "--preset": args.shift(); break;
       case "--motion-policy": opts.motionPolicy = args.shift(); break;
       case "--breakdown": opts.breakdown = args.shift(); break;
       case "--title": opts.title = args.shift(); break;
@@ -118,7 +142,7 @@ function parseArgs(argv) {
       case "--github": opts.github = args.shift(); break;
       case "--season": opts.season = args.shift(); break;
       case "--archetype": opts.archetype = args.shift(); break;
-      case "-o": case "--out": opts.out = args.shift(); break;
+      case "-o": case "--out": opts.out = args.shift(); opts.outSet = true; break;
       case "--source": opts.source = args.shift(); break;
       case "--provider": opts.provider = args.shift(); break;
       case "--codex-source": opts.codexSource = args.shift(); break;
@@ -147,6 +171,9 @@ function parseArgs(argv) {
   if (!CITY_BASES.includes(opts.cityBase)) throw new Error(`City base must be ${CITY_BASES.map((value) => `"${value}"`).join(", ")}.`);
   if (!CITY_MOTIONS.includes(opts.cityMotion)) throw new Error(`City motion must be ${CITY_MOTIONS.map((value) => `"${value}"`).join(", ")}.`);
   if (!MOTION_POLICIES.includes(opts.motionPolicy)) throw new Error(`Motion policy must be ${MOTION_POLICIES.map((value) => `"${value}"`).join(", ")}.`);
+  if (!CITY_WEATHERS.includes(opts.weather)) throw new Error(`Weather must be ${CITY_WEATHERS.map((value) => `"${value}"`).join(", ")}.`);
+  if (!CITY_SEASONS.includes(opts.citySeason)) throw new Error(`City season must be ${CITY_SEASONS.map((value) => `"${value}"`).join(", ")}.`);
+  if (opts.command === "preview" && !opts.outSet) opts.out = path.join(os.tmpdir(), "token-stack-preview");
   return opts;
 }
 
@@ -201,6 +228,28 @@ async function renderCards(stats, opts) {
       content: render(stats, opts),
     };
   });
+}
+
+function renderPreview(stats, opts) {
+  const output = path.resolve(opts.out);
+  fs.mkdirSync(output, { recursive: true });
+  const cards = Object.entries(CITY_PRESETS).map(([name, preset]) => {
+    const file = `token-stack-${name}.svg`;
+    fs.writeFileSync(path.join(output, file), CARDS.activity(stats, {
+      ...opts,
+      ...preset,
+      preset: name,
+      chart: "skyline",
+      motionPolicy: "always",
+      title: name === "default" ? "Token Activity" : name.replaceAll("-", " "),
+    }));
+    return { name, file, command: `npx @sukojin/token-stack generate --card activity --chart skyline --preset ${name}` };
+  });
+  const figures = cards.map(({ name, file, command }) => `<figure><img src="${file}" width="495" height="220" alt="${name} preset"><figcaption><strong>${name}</strong><code>${command}</code></figcaption></figure>`).join("");
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Token Stack atmosphere presets</title><style>*{box-sizing:border-box}body{margin:0;padding:24px;background:#080b12;color:#d8e0eb;font:14px system-ui}h1{margin:0 0 6px;font-size:24px}p{margin:0 0 22px;color:#9ea7b3}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(495px,1fr));gap:22px;align-items:start}figure{margin:0;max-width:495px}img{display:block;width:100%;height:auto}figcaption{display:grid;gap:6px;padding:8px 3px}strong{font-size:13px;text-transform:uppercase;letter-spacing:.08em}code{overflow:auto;padding:8px;border:1px solid #30363d;border-radius:6px;background:#111620;color:#9ecbff;white-space:nowrap}</style></head><body><h1>Token Stack atmosphere presets</h1><p>Live local activity data. Weather and season are decorative, never token metrics.</p><main class="grid">${figures}</main></body></html>`;
+  const htmlPath = path.join(output, "token-stack-preview.html");
+  fs.writeFileSync(htmlPath, html);
+  return htmlPath;
 }
 
 let opts;
@@ -271,6 +320,9 @@ switch (opts.command) {
     }
     break;
   }
+  case "preview":
+    console.log(`preview: ${renderPreview(stats, opts)}`);
+    break;
   case "stats": {
     const t = stats.totals;
     const hasCodexTokens = stats.byAgent.some((agent) => agent.name === "codex" && agent.total > 0);

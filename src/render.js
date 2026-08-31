@@ -117,7 +117,7 @@ function styles({ anim, speed, motionPolicy = "system" }, extra = "") {
   if (!anim) return "";
   const s = (base) => (base / speed).toFixed(2) + "s";
   const reducedMotionCss = motionPolicy === "always" ? "" : `
-@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}.sky-star{animation:none!important;opacity:.3!important;transform:none!important}.skyline-cloud-bank,.skyline-horizon-haze,.skyline-window-glint,.skyline-water-ripple{animation:none!important;transform:none!important}.skyline-vehicle-flow,.skyline-pedestrian-flow,.skyline-person,.skyline-person-limb{animation:none!important;transform:none!important}}`;
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}.sky-star{animation:none!important;opacity:.3!important;transform:none!important}.skyline-cloud-bank,.skyline-horizon-haze,.skyline-window-glint,.skyline-water-ripple,.skyline-weather-clouds,.skyline-weather-mist,.skyline-rain-drop,.skyline-snowflake{animation:none!important;transform:none!important}.skyline-vehicle-flow,.skyline-pedestrian-flow,.skyline-person,.skyline-person-limb{animation:none!important;transform:none!important}}`;
   return `<style>
 .f{opacity:0;animation:fu ${s(0.7)} cubic-bezier(.4,0,.2,1) forwards}
 @keyframes fu{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
@@ -266,6 +266,8 @@ function skylineMix(color, target, amount) {
 const CITY_PALETTES = ["natural", "graphite", "copper", "evergreen"];
 const CITY_BASES = ["waterfront", "park", "transit"];
 const CITY_MOTIONS = ["auto", "off"];
+const CITY_WEATHERS = ["auto", "clear", "cloudy", "mist", "rain", "snow"];
+const CITY_SEASONS = ["auto", "spring", "summer", "autumn", "winter", "off"];
 
 function resolveCityPalette(phase, preset) {
   if (!CITY_PALETTES.includes(preset)) throw new Error(`Unknown city palette "${preset}". Available: ${CITY_PALETTES.join(", ")}`);
@@ -287,6 +289,60 @@ function resolveCityPalette(phase, preset) {
     window: skylineMix(phase.window, settings.window, .34),
     palette: mixPalette(phase.palette),
   };
+}
+
+function resolveCitySeason(value = "off", now) {
+  if (!CITY_SEASONS.includes(value)) throw new Error(`Unknown city season "${value}". Available: ${CITY_SEASONS.join(", ")}`);
+  if (value !== "auto") return value;
+  const date = now ? new Date(now) : new Date();
+  const month = (Number.isNaN(date.getTime()) ? new Date() : date).getMonth() + 1;
+  if (month >= 3 && month <= 5) return "spring";
+  if (month >= 6 && month <= 8) return "summer";
+  if (month >= 9 && month <= 11) return "autumn";
+  return "winter";
+}
+
+function resolveCityWeather(value = "clear", season = "off", now) {
+  if (!CITY_WEATHERS.includes(value)) throw new Error(`Unknown weather "${value}". Available: ${CITY_WEATHERS.join(", ")}`);
+  if (value !== "auto") return value;
+  const date = now ? new Date(now) : new Date();
+  const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+  const seed = safeDate.getFullYear() * 372 + (safeDate.getMonth() + 1) * 31 + safeDate.getDate();
+  const roll = skylineHash(seed);
+  if (season === "winter" && roll < .2) return "snow";
+  if (season !== "winter" && roll < .12) return "rain";
+  if (roll < .25) return "mist";
+  if (roll < .53) return "cloudy";
+  return "clear";
+}
+
+function applyCitySeason(phase, season) {
+  if (season === "off") return phase;
+  const settings = {
+    spring: { grass: "#91b780", field: "#6f8d65", sky: "#b7c9c7", amount: .24 },
+    summer: { grass: "#739869", field: "#4f7257", sky: "#91aeb5", amount: .2 },
+    autumn: { grass: "#b47b47", field: "#76583f", sky: "#bd9981", amount: .42 },
+    winter: { grass: "#d4dddf", field: "#879699", sky: "#b9c8d0", amount: .5 },
+  }[season];
+  return {
+    ...phase,
+    sky: phase.sky.map((color, index) => skylineMix(color, settings.sky, settings.amount * (index === 2 ? .7 : 1))),
+    grass: skylineMix(phase.grass, settings.grass, settings.amount),
+    field: skylineMix(phase.field, settings.field, settings.amount * .8),
+    window: season === "winter" ? skylineMix(phase.window, "#fff1c7", .16) : phase.window,
+  };
+}
+
+function applyCityWeather(phase, weather) {
+  const setting = {
+    cloudy: ["#87939b", .18],
+    mist: ["#b8c2c1", .22],
+    rain: ["#526575", .3],
+    snow: ["#c2ced4", .24],
+  }[weather];
+  if (!setting) return phase;
+  const [target, amount] = setting;
+  return { ...phase, sky: phase.sky.map((color) => skylineMix(color, target, amount)) };
 }
 
 function skylineLandmarkMetrics(shape, width, height) {
@@ -368,6 +424,9 @@ function chartSkylineContinuous(days, t, box, {
   cityPalette = "natural",
   cityBase = "waterfront",
   cityMotion = "auto",
+  weather = "clear",
+  citySeason = "off",
+  preset = "default",
   mobility = {},
 } = {}) {
   const { x, y, w, h } = box;
@@ -375,11 +434,13 @@ function chartSkylineContinuous(days, t, box, {
   if (!["cinematic", "classic"].includes(skylineStyle)) throw new Error(`Unknown skyline style "${skylineStyle}". Available: cinematic, classic`);
   if (!CITY_BASES.includes(cityBase)) throw new Error(`Unknown city base "${cityBase}". Available: ${CITY_BASES.join(", ")}`);
   if (!CITY_MOTIONS.includes(cityMotion)) throw new Error(`Unknown city motion "${cityMotion}". Available: ${CITY_MOTIONS.join(", ")}`);
+  const resolvedSeason = resolveCitySeason(citySeason, now);
+  const resolvedWeather = resolveCityWeather(weather, resolvedSeason, now);
   const cinematic = skylineStyle !== "classic";
   const basePhase = cinematic && resolvedPhase.name === "day"
     ? { name: resolvedPhase.name, ...CINEMATIC_DAY_PHASE }
     : resolvedPhase;
-  const phase = resolveCityPalette(basePhase, cityPalette);
+  const phase = applyCityWeather(applyCitySeason(resolveCityPalette(basePhase, cityPalette), resolvedSeason), resolvedWeather);
   const detail = w >= 390 && h >= 95;
   const boundedTokenStreak = Number.isFinite(tokenStreak)
     ? clamp(Math.floor(tokenStreak), 0, days.length)
@@ -866,6 +927,28 @@ function chartSkylineContinuous(days, t, box, {
   }).join("") : "";
   const cloudOpacity = phase.name === "day" ? (cinematic ? ".085" : ".2") : (cinematic ? ".18" : ".16");
   const clouds = phase.name === "day" || phase.name === "dawn" ? `<g class="f skyline-cloud-bank" style="${delay(1, .1, speed)}" fill="${cinematic ? "url(#skylineCloud)" : "#ffffff"}" fill-opacity="${cloudOpacity}"><path d="M${(x + w * .08).toFixed(1)} ${(y + h * .25).toFixed(1)}c${(w * .022).toFixed(1)} -${(h * .09).toFixed(1)} ${(w * .065).toFixed(1)} -${(h * .09).toFixed(1)} ${(w * .084).toFixed(1)} 0c${(w * .022).toFixed(1)} -${(h * .055).toFixed(1)} ${(w * .072).toFixed(1)} -${(h * .045).toFixed(1)} ${(w * .084).toFixed(1)} ${(h * .035).toFixed(1)}H${(x + w * .26).toFixed(1)}c-${(w * .018).toFixed(1)} ${(h * .055).toFixed(1)} -${(w * .14).toFixed(1)} ${(h * .055).toFixed(1)} -${(w * .18).toFixed(1)} 0Z"/><path d="M${(x + w * .63).toFixed(1)} ${(y + h * .34).toFixed(1)}c${(w * .018).toFixed(1)} -${(h * .07).toFixed(1)} ${(w * .055).toFixed(1)} -${(h * .065).toFixed(1)} ${(w * .07).toFixed(1)} 0c${(w * .022).toFixed(1)} -${(h * .05).toFixed(1)} ${(w * .06).toFixed(1)} -${(h * .035).toFixed(1)} ${(w * .075).toFixed(1)} ${(h * .025).toFixed(1)}H${(x + w * .8).toFixed(1)}c-${(w * .014).toFixed(1)} ${(h * .045).toFixed(1)} -${(w * .12).toFixed(1)} ${(h * .045).toFixed(1)} -${(w * .17).toFixed(1)} 0Z"/>${cinematic ? `<path d="M${(x + w * .35).toFixed(1)} ${(y + h * .14).toFixed(1)}c${(w * .035).toFixed(1)} -${(h * .055).toFixed(1)} ${(w * .1).toFixed(1)} -${(h * .045).toFixed(1)} ${(w * .13).toFixed(1)} 0h${(w * .11).toFixed(1)}c-${(w * .03).toFixed(1)} ${(h * .04).toFixed(1)} -${(w * .17).toFixed(1)} ${(h * .045).toFixed(1)} -${(w * .24).toFixed(1)} 0Z" fill-opacity=".34"/>` : ""}</g>` : "";
+  const weatherClouds = ["cloudy", "rain", "snow"].includes(resolvedWeather)
+    ? `<g class="skyline-weather-clouds" fill="url(#skylineCloud)" fill-opacity="${resolvedWeather === "rain" ? ".16" : ".11"}"><title>Decorative ${resolvedWeather} atmosphere; not a usage metric.</title><path d="M${x - 12} ${y + h * .14}C${x + w * .1} ${y + h * .07} ${x + w * .2} ${y + h * .15} ${x + w * .31} ${y + h * .11}S${x + w * .55} ${y + h * .08} ${x + w * .69} ${y + h * .14}S${x + w * .92} ${y + h * .08} ${x + w + 12} ${y + h * .14}V${y - 2}H${x - 12}Z"/></g>`
+    : "";
+  const weatherMist = resolvedWeather === "mist"
+    ? `<g class="skyline-weather-mist"><title>Decorative mist atmosphere; not a usage metric.</title><path d="M${x - 18} ${base - h * .2}Q${x + w * .22} ${base - h * .27} ${x + w * .46} ${base - h * .18}T${x + w + 18} ${base - h * .22}" fill="none" stroke="#eef3f1" stroke-opacity=".1" stroke-width="${detail ? "7" : "4"}"/><path d="M${x - 12} ${base - h * .07}Q${x + w * .3} ${base - h * .12} ${x + w * .58} ${base - h * .055}T${x + w + 14} ${base - h * .09}" fill="none" stroke="#f5f6f2" stroke-opacity=".08" stroke-width="${detail ? "4.5" : "3"}"/></g>`
+    : "";
+  const rainDrops = resolvedWeather === "rain" ? Array.from({ length: detail ? 22 : 12 }, (_, index) => {
+    const dropX = x + skylineHash(index * 71 + 19) * w;
+    const dropY = y - 18 + skylineHash(index * 97 + 37) * h;
+    const dropLength = 3.5 + skylineHash(index * 43 + 11) * 3.5;
+    const style = anim ? ` style="animation-delay:${(-skylineHash(index * 109 + 7) * 2.4 / speed).toFixed(2)}s;animation-duration:${((1.45 + skylineHash(index * 59 + 13) * .85) / speed).toFixed(2)}s"` : "";
+    return `<path class="skyline-rain-drop"${style} d="M${dropX.toFixed(1)} ${dropY.toFixed(1)}l-${(dropLength * .38).toFixed(1)} ${dropLength.toFixed(1)}" stroke="#d9e9ef" stroke-opacity=".34" stroke-width=".55" stroke-linecap="round"/>`;
+  }).join("") : "";
+  const snowflakes = resolvedWeather === "snow" ? Array.from({ length: detail ? 20 : 11 }, (_, index) => {
+    const flakeX = x + skylineHash(index * 83 + 29) * w;
+    const flakeY = y - 12 + skylineHash(index * 101 + 17) * h;
+    const radius = .45 + skylineHash(index * 47 + 31) * .7;
+    const style = anim ? ` style="animation-delay:${(-skylineHash(index * 127 + 5) * 6 / speed).toFixed(2)}s;animation-duration:${((5.5 + skylineHash(index * 67 + 23) * 4) / speed).toFixed(2)}s"` : "";
+    return `<circle class="skyline-snowflake"${style} cx="${flakeX.toFixed(1)}" cy="${flakeY.toFixed(1)}" r="${radius.toFixed(2)}" fill="#f5f8f7" fill-opacity=".62"/>`;
+  }).join("") : "";
+  const weatherBack = weatherClouds + weatherMist;
+  const weatherFront = rainDrops || snowflakes ? `<g class="skyline-weather-foreground"><title>Decorative ${resolvedWeather} atmosphere; not a usage metric.</title>${rainDrops}${snowflakes}</g>` : "";
   const fabric = `<polygon class="skyline-fabric" points="${x},${base} ${fabricPoints.join(" ")} ${x + w},${base}" fill="${phase.palette.midrise[0]}" fill-opacity=".42"/>`;
   const waterColors = phase.name === "night"
     ? ["#0a1828", "#12314d"]
@@ -903,6 +986,16 @@ function chartSkylineContinuous(days, t, box, {
     : waterDepth
       ? `<g class="skyline-street skyline-shore"><rect x="${x}" y="${base - 2.2}" width="${w}" height="3.4" fill="${skylineMix(phase.grass, "#17232a", .52)}" fill-opacity=".92"/><path d="M${x} ${base}H${x + w}" stroke="${phase.window}" stroke-opacity=".62" stroke-width=".8"/>${shoreTexture}${Array.from({ length: Math.floor(w / 58) }, (_, i) => { const sx = x + 20 + i * 58; return `<circle class="skyline-shore-light" cx="${sx}" cy="${base - 1}" r=".9" fill="${phase.window}" fill-opacity=".76"/><path d="M${sx - 3} ${base + 2}h6" stroke="${phase.window}" stroke-opacity=".23" stroke-width=".6"/>`; }).join("")}</g>`
       : `<g class="skyline-street skyline-transit"><path d="M${x} ${base - 2}H${x + w}V${y + h}H${x}Z" fill="#18232d" fill-opacity=".92"/><path d="M${x} ${base + 2}H${x + w}M${x} ${base + 8}H${x + w}" stroke="${phase.window}" stroke-opacity=".38" stroke-dasharray="12 8" stroke-width=".75"/><path d="M${x} ${base + 13}H${x + w}" stroke="#080d12" stroke-opacity=".82" stroke-width="2.2"/>${Array.from({ length: Math.floor(w / 62) }, (_, i) => { const sx = x + 24 + i * 62; return `<path d="M${sx} ${base - 2}v-8m-2 0h4" stroke="${phase.window}" stroke-opacity=".56" stroke-width=".8"/><circle cx="${sx}" cy="${base - 11}" r="1.1" fill="${phase.window}" fill-opacity=".9"/>`; }).join("")}</g>`;
+  const seasonalAccents = !detail || resolvedSeason === "off" || resolvedSeason === "summer"
+    ? ""
+    : resolvedSeason === "winter"
+      ? `<g class="skyline-season skyline-season-winter"><title>Decorative winter season; not a usage metric.</title><path d="M${x} ${base - 2.5}Q${x + w * .18} ${base - 4} ${x + w * .36} ${base - 2.7}T${x + w * .72} ${base - 3.2}T${x + w} ${base - 2.5}" fill="none" stroke="#eef4f4" stroke-opacity=".7" stroke-width="1.6"/></g>`
+      : `<g class="skyline-season skyline-season-${resolvedSeason}"><title>Decorative ${resolvedSeason} season; not a usage metric.</title>${Array.from({ length: resolvedSeason === "spring" ? 13 : 10 }, (_, index) => {
+        const accentX = x + 10 + skylineHash(index * 73 + 41) * (w - 20);
+        const accentY = base - 3.2 - skylineHash(index * 37 + 17) * 2.4;
+        const colors = resolvedSeason === "spring" ? ["#e3b6bd", "#f0d2cd", "#a9c68c"] : ["#b86f3d", "#d49a47", "#8f5c3d"];
+        return `<circle cx="${accentX.toFixed(1)}" cy="${accentY.toFixed(1)}" r="${(.35 + skylineHash(index * 61 + 9) * .45).toFixed(2)}" fill="${colors[index % colors.length]}" fill-opacity=".74"/>`;
+      }).join("")}</g>`;
   const vehicleCount = cityMotion === "auto" && detail && cityBase !== "park"
     ? clamp(Math.floor(Number(mobility.vehicleCount) || 0), 0, 5)
     : 0;
@@ -966,13 +1059,22 @@ function chartSkylineContinuous(days, t, box, {
   const middleCity = cinematic ? `<g class="skyline-district-plane skyline-district-plane-middle" filter="url(#skylineMiddleDepth)">${districtLayers[1].join("")}</g>` : districtLayers[1].join("");
   const cityMass = `<g id="skylineCityMass">${rearCity}${aerialHaze}${middleCity}${nearHaze}${fabric}<g class="skyline-foreground"${foregroundFilter}>${foreground.join("")}</g></g>`;
   const cityReflection = cinematic && waterDepth ? `<g class="skyline-reflected-city" mask="url(#skylineReflectionMask)" filter="url(#skylineReflectionRipple)" opacity="${phase.name === "day" ? ".38" : ".44"}"><use href="#skylineCityMass" transform="translate(0 ${(2 * base + .7).toFixed(1)}) scale(1 -1)"/></g>` : "";
-  const svg = `<defs><linearGradient id="skylineSky" x1="0" y1="0" x2="0" y2="1">${skyStops}</linearGradient><linearGradient id="skylineWater" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${waterColors[0]}"/><stop offset=".55" stop-color="${cinematic ? skylineMix(waterColors[0], phase.sky[1], .2) : waterColors[0]}"/><stop offset="1" stop-color="${waterColors[1]}"/></linearGradient><radialGradient id="skylineLuminary"><stop stop-color="#fffde1"/><stop offset=".55" stop-color="${phase.luminary}"/><stop offset="1" stop-color="${skylineMix(phase.luminary, phase.sky[1], .18)}"/></radialGradient>${cinematicDefs}${depthDefs}${reflectionDefs}${defs.join("")}</defs><g clip-path="url(#skylineScene)"><rect data-sky="${phase.name}" data-skyline-style="${cinematic ? "cinematic" : "classic"}" data-city-palette="${cityPalette}" data-city-base="${cityBase}" data-city-motion="${cityMotion}" data-city-scale="${cityScale.toFixed(3)}" data-cluster-count="${clusterCount}" x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="url(#skylineSky)"/>${horizonGlow}${atmosphericDust}${clouds}${stars}${moonHalo}${luminaryGlow}<circle class="f skyline-luminary" style="${delay(2, .12, speed)}" cx="${luminaryX}" cy="${luminaryY}" r="${luminaryR}" fill="url(#skylineLuminary)"/>${cityDepth}${cityMass}${water}${cityReflection}${reflections.join("")}${street}${streetLife}${greenway}${vignette}${grain}</g>`;
+  const svg = `<defs><linearGradient id="skylineSky" x1="0" y1="0" x2="0" y2="1">${skyStops}</linearGradient><linearGradient id="skylineWater" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${waterColors[0]}"/><stop offset=".55" stop-color="${cinematic ? skylineMix(waterColors[0], phase.sky[1], .2) : waterColors[0]}"/><stop offset="1" stop-color="${waterColors[1]}"/></linearGradient><radialGradient id="skylineLuminary"><stop stop-color="#fffde1"/><stop offset=".55" stop-color="${phase.luminary}"/><stop offset="1" stop-color="${skylineMix(phase.luminary, phase.sky[1], .18)}"/></radialGradient>${cinematicDefs}${depthDefs}${reflectionDefs}${defs.join("")}</defs><g clip-path="url(#skylineScene)"><rect data-sky="${phase.name}" data-skyline-style="${cinematic ? "cinematic" : "classic"}" data-city-palette="${cityPalette}" data-city-base="${cityBase}" data-city-motion="${cityMotion}" data-weather="${resolvedWeather}" data-season="${resolvedSeason}" data-preset="${escAttr(preset)}" data-city-scale="${cityScale.toFixed(3)}" data-cluster-count="${clusterCount}" x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="url(#skylineSky)"/>${horizonGlow}${atmosphericDust}${clouds}${weatherBack}${stars}${moonHalo}${luminaryGlow}<circle class="f skyline-luminary" style="${delay(2, .12, speed)}" cx="${luminaryX}" cy="${luminaryY}" r="${luminaryR}" fill="url(#skylineLuminary)"/>${cityDepth}${cityMass}${water}${cityReflection}${reflections.join("")}${street}${seasonalAccents}${streetLife}${greenway}${weatherFront}${vignette}${grain}</g>`;
   const starCss = phase.stars ? `.sky-star{opacity:.18;animation:skylineStarTwinkle ${starCycle.toFixed(2)}s ease-in-out infinite}@keyframes skylineStarTwinkle{0%,100%{opacity:.16}50%{opacity:.52}}` : "";
   const atmosphereCss = cinematic ? `.skyline-cloud-bank{animation:skylineCloudDrift ${(24 / speed).toFixed(2)}s ease-in-out infinite alternate;transform-origin:center}@keyframes skylineCloudDrift{to{transform:translateX(${detail ? "6px" : "3px"})}}.skyline-horizon-haze{animation:skylineHazePulse ${(8 / speed).toFixed(2)}s ease-in-out infinite}@keyframes skylineHazePulse{50%{opacity:.72}}` : "";
   const ambientCss = cinematic ? `.skyline-water-ripple{animation-name:skylineWaterDrift;animation-timing-function:ease-in-out;animation-iteration-count:infinite;transform-box:fill-box;transform-origin:center}@keyframes skylineWaterDrift{0%,100%{opacity:.62;transform:translateX(-2px)}50%{opacity:1;transform:translateX(${detail ? "5px" : "3px"})}}${nightscape ? `.skyline-window-glint{animation-name:skylineWindowGlint;animation-timing-function:ease-in-out;animation-iteration-count:infinite}@keyframes skylineWindowGlint{0%,72%,88%,100%{opacity:1}80%{opacity:.32}84%{opacity:.82}}` : ""}` : "";
   const mobilityCss = streetLife ? `.skyline-vehicle-flow{animation-name:skylineVehicleFlow;animation-timing-function:linear;animation-iteration-count:infinite}@keyframes skylineVehicleFlow{from{transform:translateX(-${(w + 20).toFixed(0)}px)}to{transform:translateX(${(w + 20).toFixed(0)}px)}}.skyline-pedestrian-flow{animation-name:skylinePedestrianFlow;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}@keyframes skylinePedestrianFlow{from{transform:translateX(-18px)}to{transform:translateX(18px)}}.skyline-person{animation:skylinePersonBob var(--walk-half,.36s) ease-in-out infinite alternate}@keyframes skylinePersonBob{to{transform:translateY(-.16px)}}.skyline-person-limb{transform-box:fill-box;transform-origin:center top}.skyline-person-arm{animation:skylineArmSwing var(--walk-cycle,.72s) ease-in-out infinite alternate}@keyframes skylineArmSwing{from{transform:rotate(-16deg)}to{transform:rotate(16deg)}}.skyline-person-leg{animation:skylineLegSwing var(--walk-cycle,.72s) ease-in-out infinite alternate}@keyframes skylineLegSwing{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}.skyline-person-arm-b,.skyline-person-leg-a{animation-direction:alternate-reverse}` : "";
-  const extraCss = anim ? `${starCss}${atmosphereCss}${ambientCss}${mobilityCss}.skyline-fabric{opacity:0;animation:fu ${(0.7 / speed).toFixed(2)}s cubic-bezier(.4,0,.2,1) forwards}.skyline-building-grow{clip-path:inset(100% 0 0 0) fill-box;animation:skylineBuildingGrow ${(0.8 / speed).toFixed(2)}s cubic-bezier(.2,.6,.2,1) forwards}@keyframes skylineBuildingGrow{to{clip-path:inset(0 0 0 0) fill-box}}` : "";
-  return { svg, extraCss };
+  const weatherCss = resolvedWeather === "rain"
+    ? `.skyline-weather-clouds{animation:skylineWeatherCloudDrift ${(26 / speed).toFixed(2)}s ease-in-out infinite alternate}@keyframes skylineWeatherCloudDrift{to{transform:translateX(${detail ? "8px" : "4px"})}}.skyline-rain-drop{animation-name:skylineRainFall;animation-timing-function:linear;animation-iteration-count:infinite}@keyframes skylineRainFall{to{transform:translate(-${detail ? "13" : "7"}px,${(h + 24).toFixed(0)}px)}}`
+    : resolvedWeather === "snow"
+      ? `.skyline-weather-clouds{animation:skylineWeatherCloudDrift ${(29 / speed).toFixed(2)}s ease-in-out infinite alternate}@keyframes skylineWeatherCloudDrift{to{transform:translateX(${detail ? "6px" : "3px"})}}.skyline-snowflake{animation-name:skylineSnowFall;animation-timing-function:linear;animation-iteration-count:infinite}@keyframes skylineSnowFall{50%{transform:translate(${detail ? "5" : "3"}px,${((h + 20) / 2).toFixed(0)}px)}to{transform:translate(-${detail ? "4" : "2"}px,${(h + 20).toFixed(0)}px)}}`
+      : resolvedWeather === "mist"
+        ? `.skyline-weather-mist{animation:skylineMistDrift ${(18 / speed).toFixed(2)}s ease-in-out infinite alternate}@keyframes skylineMistDrift{to{transform:translateX(${detail ? "9px" : "4px"});opacity:.72}}`
+        : resolvedWeather === "cloudy"
+          ? `.skyline-weather-clouds{animation:skylineWeatherCloudDrift ${(28 / speed).toFixed(2)}s ease-in-out infinite alternate}@keyframes skylineWeatherCloudDrift{to{transform:translateX(${detail ? "7px" : "3px"})}}`
+          : "";
+  const extraCss = anim ? `${starCss}${atmosphereCss}${ambientCss}${mobilityCss}${weatherCss}.skyline-fabric{opacity:0;animation:fu ${(0.7 / speed).toFixed(2)}s cubic-bezier(.4,0,.2,1) forwards}.skyline-building-grow{clip-path:inset(100% 0 0 0) fill-box;animation:skylineBuildingGrow ${(0.8 / speed).toFixed(2)}s cubic-bezier(.2,.6,.2,1) forwards}@keyframes skylineBuildingGrow{to{clip-path:inset(0 0 0 0) fill-box}}` : "";
+  return { svg, extraCss, atmosphere: { weather: resolvedWeather, season: resolvedSeason, preset } };
 }
 
 const CHARTS = { bars: chartBars, line: chartLine, grass: chartGrass, skyline: chartSkylineContinuous };
@@ -993,7 +1095,7 @@ export function renderSummaryCompact(stats, opts = {}) {
   const drawChart = CHARTS[chart];
   if (!drawChart) throw new Error(`Unknown chart "${chart}". Available: ${Object.keys(CHARTS).join(", ")}`);
   const box = { x: 20, y: 100, w: W - 40, h: 72 };
-  const { svg: chartSvg, extraCss } = drawChart(days, t, box, {
+  const { svg: chartSvg, extraCss, atmosphere } = drawChart(days, t, box, {
     anim,
     speed,
     sky: opts.sky,
@@ -1003,6 +1105,9 @@ export function renderSummaryCompact(stats, opts = {}) {
     cityPalette: opts.cityPalette,
     cityBase: opts.cityBase,
     cityMotion: opts.cityMotion,
+    weather: opts.weather,
+    citySeason: opts.citySeason,
+    preset: opts.preset,
     mobility: signals,
   });
 
@@ -1019,7 +1124,10 @@ export function renderSummaryCompact(stats, opts = {}) {
 ${chartSvg}
 <text class="f" style="${delay(8, 0.12, speed)}" x="20" y="${H - 10}" font-size="9.5" fill="${t.subtext}">in ${formatTokens(totals.input)} · out ${formatTokens(totals.output)} · cache ${formatTokens(totals.cacheRead + totals.cacheWrite)}</text>
 </g>`;
-  return frame(W, H, t, title, body, styles({ anim, speed, motionPolicy: opts.motionPolicy }, extraCss), opts.scale, signals?.description);
+  const description = atmosphere
+    ? `${signals?.description ?? ""} Decorative atmosphere: ${atmosphere.weather} weather, ${atmosphere.season} season; neither is a usage metric.`.trim()
+    : signals?.description;
+  return frame(W, H, t, title, body, styles({ anim, speed, motionPolicy: opts.motionPolicy }, extraCss), opts.scale, description);
 }
 
 export function renderSummary(stats, opts = {}) {
@@ -1110,7 +1218,7 @@ export function renderActivity(stats, opts = {}) {
   const windowCost = days.reduce((a, d) => a + d.cost, 0);
   const skylineCostLabel = hasUnpricedCodex(stats) ? "CLAUDE EST." : "EST. COST";
   const drawChart = chart === "skyline" ? chartSkylineContinuous : chartBars;
-  const { svg: chartSvg, extraCss } = drawChart(days, t, { x: chartX, y: baseY - chartH, w: chartW, h: chartH }, {
+  const { svg: chartSvg, extraCss, atmosphere } = drawChart(days, t, { x: chartX, y: baseY - chartH, w: chartW, h: chartH }, {
     anim,
     speed,
     sky: opts.sky,
@@ -1120,6 +1228,9 @@ export function renderActivity(stats, opts = {}) {
     cityPalette: opts.cityPalette,
     cityBase: opts.cityBase,
     cityMotion: opts.cityMotion,
+    weather: opts.weather,
+    citySeason: opts.citySeason,
+    preset: opts.preset,
     mobility: signals,
   });
   const skylineReadout = signals
@@ -1143,7 +1254,10 @@ ${chartSvg}
 <text x="${chartX}" y="${dateY}" font-size="${skylineLayout ? "9.7" : "10"}" fill="${t.subtext}">${esc(days[0]?.date ?? "")}</text>
 <text x="${chartX + chartW}" y="${dateY}" font-size="${skylineLayout ? "9.7" : "10"}" text-anchor="end" fill="${t.subtext}">${esc(days[days.length - 1]?.date ?? "")}</text>
 </g>`;
-  return frame(W, H, t, title, body, styles({ anim, speed, motionPolicy: opts.motionPolicy }, extraCss), opts.scale, signals?.description);
+  const description = atmosphere
+    ? `${signals?.description ?? ""} Decorative atmosphere: ${atmosphere.weather} weather, ${atmosphere.season} season; neither is a usage metric.`.trim()
+    : signals?.description;
+  return frame(W, H, t, title, body, styles({ anim, speed, motionPolicy: opts.motionPolicy }, extraCss), opts.scale, description);
 }
 
 export function renderModels(stats, opts = {}) {

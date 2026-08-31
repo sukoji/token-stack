@@ -191,7 +191,7 @@ test("skyline stars stay in place and use a slow reduced-motion-safe twinkle", (
   assert.match(night, /@keyframes skylineWindowGlint/);
   assert.match(night, /class="skyline-water-ripple" style="animation-delay:-[0-9.]+s;animation-duration:[0-9.]+s"/);
   assert.match(night, /@keyframes skylineWaterDrift/);
-  assert.match(night, /\.skyline-window-glint,\.skyline-water-ripple\{animation:none!important;transform:none!important\}/);
+  assert.match(night, /\.skyline-window-glint,\.skyline-water-ripple,[^}]*\.skyline-snowflake\{animation:none!important;transform:none!important\}/);
   const starDelays = [...night.matchAll(/class="sky-star" style="animation-delay:(-[0-9.]+)s"/g)].map((match) => Number(match[1]));
   assert.ok(starDelays.length > 0);
   assert.ok(starDelays.every((delay) => delay <= 0 && delay >= -10));
@@ -204,6 +204,65 @@ test("skyline stars stay in place and use a slow reduced-motion-safe twinkle", (
   assert.match(day, /class="skyline-water-ripple" style="animation-delay:-[0-9.]+s;animation-duration:[0-9.]+s"/);
   const staticNight = renderActivity(stats, { anim: false, chart: "skyline", sky: "night" });
   assert.doesNotMatch(staticNight, /skylineStarTwinkle|skylineWindowGlint|skylineWaterDrift|animation-delay:-/);
+});
+
+test("skyline weather and city seasons are restrained, deterministic decoration", () => {
+  const stats = {
+    totals: { total: 4_200_000, cost: 2, input: 4_200_000, output: 0, cacheRead: 0, cacheWrite: 0 },
+    byDay: [400_000, 900_000, 2_900_000].map((total, index) => ({
+      date: `2026-07-${String(index + 1).padStart(2, "0")}`,
+      total,
+      cost: 0,
+    })),
+    streak: 3,
+  };
+  const defaults = renderActivity(stats, { anim: true, chart: "skyline", sky: "day" });
+  assert.match(defaults, /data-weather="clear" data-season="off" data-preset="default"/);
+  assert.doesNotMatch(defaults, /class="skyline-weather-(?:clouds|mist|foreground)"|class="skyline-(?:rain-drop|snowflake|season-[^"]+)"/);
+
+  const rain = renderActivity(stats, { anim: true, chart: "skyline", weather: "rain" });
+  assert.match(rain, /data-weather="rain"/);
+  assert.match(rain, /class="skyline-rain-drop"/);
+  assert.match(rain, /@keyframes skylineRainFall/);
+  assert.match(rain, /Decorative rain atmosphere; not a usage metric\./);
+  assert.match(rain, /Decorative atmosphere: rain weather, off season; neither is a usage metric\./);
+
+  const snow = renderActivity(stats, { anim: true, chart: "skyline", weather: "snow" });
+  assert.match(snow, /class="skyline-snowflake"/);
+  assert.match(snow, /@keyframes skylineSnowFall/);
+
+  const mist = renderActivity(stats, { anim: true, chart: "skyline", weather: "mist" });
+  assert.match(mist, /class="skyline-weather-mist"/);
+  assert.match(mist, /@keyframes skylineMistDrift/);
+
+  const cloudy = renderActivity(stats, { anim: true, chart: "skyline", weather: "cloudy" });
+  assert.match(cloudy, /class="skyline-weather-clouds"/);
+  assert.match(cloudy, /@keyframes skylineWeatherCloudDrift/);
+
+  const staticRain = renderActivity(stats, { anim: false, chart: "skyline", weather: "rain" });
+  assert.match(staticRain, /class="skyline-rain-drop"/);
+  assert.doesNotMatch(staticRain, /skylineRainFall/);
+  assert.ok([...staticRain.matchAll(/<line class="skyline-rain-drop"([^>]*)>/g)].every((match) => !match[1].includes("style=")));
+
+  const seasons = [
+    [new Date(2026, 0, 15), "winter"],
+    [new Date(2026, 3, 15), "spring"],
+    [new Date(2026, 6, 15), "summer"],
+    [new Date(2026, 9, 15), "autumn"],
+  ];
+  const seasonalSvgs = seasons.map(([now, season]) => {
+    const svg = renderActivity(stats, { anim: false, chart: "skyline", citySeason: "auto", weather: "clear", now });
+    assert.match(svg, new RegExp(`data-season="${season}"`));
+    return svg;
+  });
+  assert.equal(new Set(seasonalSvgs).size, 4);
+  assert.match(seasonalSvgs[0], /skyline-season-winter/);
+  assert.match(seasonalSvgs[1], /skyline-season-spring/);
+  assert.doesNotMatch(seasonalSvgs[2], /skyline-season-summer/);
+  assert.match(seasonalSvgs[3], /skyline-season-autumn/);
+
+  assert.throws(() => renderActivity(stats, { chart: "skyline", weather: "storm" }), /Unknown weather/);
+  assert.throws(() => renderActivity(stats, { chart: "skyline", citySeason: "monsoon" }), /Unknown city season/);
 });
 
 test("skyline city readout uses only daily token activity and stays accessible when compact", () => {

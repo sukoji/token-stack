@@ -30,6 +30,9 @@ npx @sukojin/token-stack generate --card all
 
 # Or create/update a Gist and print README embeds
 npx @sukojin/token-stack sync --card all
+
+# Compare every built-in city atmosphere with your local activity
+npx @sukojin/token-stack preview
 ```
 
 Re-run `sync --gist <id>` to refresh the same public image URL everywhere it is embedded.
@@ -123,6 +126,31 @@ npx @sukojin/token-stack generate --card activity --chart skyline --motion-polic
 
 Palettes are `natural`, `graphite`, `copper`, and `evergreen`; bases are `waterfront`, `park`, and `transit`. `--city-motion auto` derives up to five small vehicles and pedestrians from recent session/project signals. Animation is deterministic and restrained; the default `system` policy disables it under `prefers-reduced-motion`, while `always` deliberately overrides that viewer preference.
 
+### Atmosphere presets
+
+Weather and city season can change the mood without changing what the skyline measures. The original `natural + waterfront + clear` city remains the `default` preset. Four opt-in combinations provide useful starting points:
+
+| Preset | Composition |
+|---|---|
+| `default` | Natural waterfront, clear sky, local-time lighting |
+| `rainy-noir` | Graphite transit district, restrained rain, night |
+| `autumn-park` | Copper park, low mist, autumn, dusk |
+| `winter-transit` | Graphite transit district, sparse snow, winter, dawn |
+| `evergreen-mist` | Evergreen waterfront, low mist, spring, dawn |
+
+```bash
+# Write five SVGs plus a responsive local HTML comparison gallery
+npx @sukojin/token-stack preview
+
+# Start from a preset, then override any part explicitly
+npx @sukojin/token-stack generate --card activity --chart skyline --preset rainy-noir --weather clear --sky dusk
+
+# Calendar season plus a deterministic daily decorative condition
+npx @sukojin/token-stack generate --card activity --chart skyline --city-season auto --weather auto
+```
+
+`--weather` accepts `clear`, `cloudy`, `mist`, `rain`, `snow`, or `auto`; `--city-season` accepts `spring`, `summer`, `autumn`, `winter`, `off`, or `auto`. Explicit flags always override the selected preset, regardless of option order. `auto` is local and deterministic: it uses the calendar date, not a location, weather API, network request, or collected usage signal. Weather and season are decorative and are identified as such in the SVG's accessible description. Use `--season` separately for the Passport card's text label.
+
 All cards are SVGs. `--scale 0.75`, `--scale 1`, and `--scale 1.25` change intrinsic output dimensions
 without distorting the ratio, which is useful when a README renderer does not apply a width attribute.
 
@@ -186,6 +214,7 @@ These checks verify the known formats and failure modes; they cannot guarantee t
 | `sync` | Upload card(s) to a Gist via `gh` and print embed links |
 | `stats` | Print a usage summary to the terminal |
 | `json` | Print aggregated statistics for another frontend |
+| `preview` | Write all atmosphere presets and a local HTML gallery |
 | `init` | Print a reviewable Claude Code hook and README embed; changes no settings |
 
 ## Options
@@ -200,6 +229,9 @@ These checks verify the known formats and failure modes; they cannot guarantee t
 | `--city-palette` | `natural` | `natural`, `graphite`, `copper`, or `evergreen` |
 | `--city-base` | `waterfront` | `waterfront`, `park`, or `transit` foreground |
 | `--city-motion` | `auto` | `auto` uses collected session/project signals; `off` removes street life |
+| `--weather` | `clear` | `auto`, `clear`, `cloudy`, `mist`, `rain`, or `snow`; decorative only |
+| `--city-season` | `off` | `auto`, `spring`, `summer`, `autumn`, `winter`, or `off`; decorative only |
+| `--preset` | `default` | `default`, `rainy-noir`, `autumn-park`, `winter-transit`, or `evergreen-mist` |
 | `--motion-policy` | `system` | `system` respects reduced-motion; `always` keeps SVG animation running |
 | `--breakdown` | `log` | Summary comparison: `log` (readable) or `raw` (proportional tokens) |
 | `--theme` | `dark` | `dark`, `light`, `dracula`, or `tokyonight` |

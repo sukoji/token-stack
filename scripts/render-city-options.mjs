@@ -25,17 +25,18 @@ const stats = {
   streak: byDay.length,
 };
 const variants = [
-  { name: "natural-waterfront", cityPalette: "natural", cityBase: "waterfront" },
-  { name: "copper-park", cityPalette: "copper", cityBase: "park" },
-  { name: "graphite-transit", cityPalette: "graphite", cityBase: "transit" },
-  { name: "evergreen-waterfront", cityPalette: "evergreen", cityBase: "waterfront" },
+  { name: "default", preset: "default", cityPalette: "natural", cityBase: "waterfront", weather: "clear", citySeason: "off", sky: "day" },
+  { name: "rainy-noir", preset: "rainy-noir", cityPalette: "graphite", cityBase: "transit", weather: "rain", citySeason: "off", sky: "night" },
+  { name: "autumn-park", preset: "autumn-park", cityPalette: "copper", cityBase: "park", weather: "mist", citySeason: "autumn", sky: "dusk" },
+  { name: "winter-transit", preset: "winter-transit", cityPalette: "graphite", cityBase: "transit", weather: "snow", citySeason: "winter", sky: "dawn" },
+  { name: "evergreen-mist", preset: "evergreen-mist", cityPalette: "evergreen", cityBase: "waterfront", weather: "mist", citySeason: "spring", sky: "dawn" },
 ];
 
 const outIndex = process.argv.indexOf("--out");
 const output = path.resolve(outIndex >= 0 ? process.argv[outIndex + 1] : path.join(os.tmpdir(), "token-stack-city-options"));
 fs.mkdirSync(output, { recursive: true });
 for (const variant of variants) {
-  const svg = renderActivity(stats, { anim: false, chart: "skyline", sky: "day", ...variant });
+  const svg = renderActivity(stats, { anim: false, chart: "skyline", ...variant });
   fs.writeFileSync(path.join(output, `${variant.name}.svg`), svg);
 }
 const cards = variants.map((variant) => `<figure><img src="${variant.name}.svg" width="495" height="220" alt="${variant.name}"><figcaption>${variant.name}</figcaption></figure>`).join("");
