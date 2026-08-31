@@ -76,3 +76,29 @@
 ### Blockers
 
 - None for the skyline release. Pure procedural SVG can reproduce the reference's density, depth, and reflection composition, but not literal photo-level pixels without embedding a raster asset.
+
+## 2026-08-31 - Ambient Skyline Motion v0.5.3
+
+### Work summary
+
+- Added long-running ambient motion that continues after the skyline construction reveal finishes.
+- Added independently timed glints to a sparse deterministic subset of lit dusk and night windows; a 30-day metropolis rendered 15 dusk and 17 night glints rather than animating every window.
+- Added independently timed horizontal drift and opacity changes to eight irregular waterfront ripple paths in the full card across every sky phase.
+- Retained the existing slow star twinkle, daylight cloud drift, and haze motion without animating city geometry or the reflected building mass.
+- Explicitly disabled window, water, cloud, haze, and star ambient motion under `prefers-reduced-motion`; `--no-anim` emits no ambient keyframes or per-element timing.
+
+### Verification
+
+- `npm test`: 41 tests passed.
+- `npm run verify:skyline`: 88 renders passed across 11 profiles; largest SVG was 214,898 bytes.
+- `npm run verify:pack`: packed, installed, and executed successfully from a spaced Unicode path.
+- `npm pack --dry-run --json`: package `@sukojin/token-stack@0.5.3` validated at 42,790 bytes packed and 143,977 bytes unpacked.
+- Automated checks bound independently animated windows to 24 full / 12 compact and verify 7.5-13.1 second glint timing.
+
+### Commits
+
+- `157e2db` - Keep the skyline subtly animated.
+
+### Blockers
+
+- None.
