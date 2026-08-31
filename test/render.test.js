@@ -107,6 +107,11 @@ test("skyline palettes, bases, and metric-driven street life are composable", ()
   assert.match(defaults, /data-city-palette="natural" data-city-base="waterfront" data-city-motion="auto"/);
   assert.match(defaults, /class="skyline-street-life" data-recent-sessions="9" data-active-projects="3" data-vehicles="4" data-pedestrians="4"/);
   assert.match(defaults, /@keyframes skylineVehicleFlow/);
+  assert.equal((defaults.match(/class="skyline-person skyline-person-/g) ?? []).length, 4);
+  assert.match(defaults, /class="skyline-person-head"/);
+  assert.match(defaults, /class="skyline-person-torso"/);
+  assert.match(defaults, /class="skyline-person-legs"/);
+  assert.match(defaults, /class="skyline-person-accessory"/);
   assert.match(defaults, /Street traffic reflects 9 sessions in the latest 3 days; pedestrians reflect up to 3 active projects per day\./);
 
   const paletteSvgs = ["natural", "graphite", "copper", "evergreen"].map((cityPalette) =>

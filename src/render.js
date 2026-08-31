@@ -922,7 +922,20 @@ function chartSkylineContinuous(days, t, box, {
     const actorX = x + 12 + skylineHash(index * 97 + 31) * Math.max(10, w - 24);
     const duration = (24 + skylineHash(index * 53 + 11) * 12) / speed;
     const actorStyle = anim ? ` style="animation-delay:${(-skylineHash(index * 109 + 23) * duration).toFixed(2)}s;animation-duration:${duration.toFixed(2)}s"` : "";
-    return `<g transform="translate(${actorX.toFixed(1)} ${pedestrianY.toFixed(1)})"><g class="skyline-pedestrian-flow"${actorStyle}><circle cy="-2.4" r=".7" fill="${phase.window}"/><path d="M0 -1.7V1.1M0 -.3l-1 1.2M0 -.3l1 1M0 1.1l-.8 1.4M0 1.1l.9 1.35" stroke="${index % 2 ? "#d3b181" : "#9eb9c5"}" stroke-width=".62" stroke-linecap="round"/></g></g>`;
+    const variant = index % 4;
+    const skin = ["#c99672", "#8f5f46", "#d8aa83", "#a97255"][variant];
+    const clothing = ["#52758a", "#9a684f", "#6c7962", "#6f627d"][variant];
+    const trousers = ["#263746", "#343038", "#4a4d43", "#2d3342"][variant];
+    const hair = ["#30261f", "#171719", "#6a4937", "#252129"][variant];
+    const accessory = variant === 1
+      ? `<path class="skyline-person-accessory" d="M1.15 -1.25h1.15v1.65H1.15Z" rx=".2" fill="#493b31"/><path d="M1.35 -1.25v-.45h.75v.45" fill="none" stroke="#493b31" stroke-width=".28"/>`
+      : variant === 3
+        ? `<path class="skyline-person-accessory" d="M-1.45 -2.45Q-2 -1.25-1.55 .1L-.85-.15V-2.45Z" fill="#39475a"/>`
+        : "";
+    const lowerBody = variant === 2
+      ? `<path class="skyline-person-lower" d="M-.78 -.15H.78L1.18 1.2H-1.16Z" fill="${skylineMix(clothing, "#151b22", .18)}"/><g class="skyline-person-legs" fill="none" stroke="${skin}" stroke-width=".55" stroke-linecap="round"><path d="M-.45 1.1L-.7 2.45"/><path d="M.45 1.1L.85 2.35"/></g>`
+      : `<g class="skyline-person-legs" fill="none" stroke="${trousers}" stroke-width=".78" stroke-linecap="round"><path d="M-.42 .1L-.8 2.4"/><path d="M.42 .1L1.02 2.25"/></g>`;
+    return `<g transform="translate(${actorX.toFixed(1)} ${pedestrianY.toFixed(1)})"><g class="skyline-pedestrian-flow"${actorStyle}><g class="skyline-person skyline-person-${variant}" data-person-variant="${variant}"><ellipse class="skyline-person-head" cy="-4" rx=".72" ry=".86" fill="${skin}"/><path class="skyline-person-hair" d="M-.72-4.1Q-.52-5.02.15-4.98Q.78-4.84.75-4.08Q.2-4.5-.72-4.1Z" fill="${hair}"/><path class="skyline-person-neck" d="M-.28-3.28v.48h.56v-.48" fill="${skin}"/><path class="skyline-person-torso" d="M-.78-2.94Q0-3.23.78-2.94L1.02-.25Q.45.2 0 .17Q-.48.2-1.02-.25Z" fill="${clothing}"/><g class="skyline-person-arms" fill="none" stroke-linecap="round"><path d="M-.78-2.5L-1.38-.45" stroke="${clothing}" stroke-width=".62"/><path d="M.78-2.48L1.34-.72" stroke="${clothing}" stroke-width=".62"/><circle cx="-1.42" cy="-.33" r=".24" fill="${skin}"/><circle cx="1.37" cy="-.6" r=".24" fill="${skin}"/></g>${lowerBody}<path class="skyline-person-shoes" d="M-1.2 2.48h.75M.72 2.4h.72" stroke="#15191e" stroke-width=".45" stroke-linecap="round"/>${accessory}</g></g></g>`;
   }).join("");
   const streetLife = vehicleCount || pedestrianCount
     ? `<g class="skyline-street-life" data-recent-sessions="${Math.max(0, Math.floor(Number(mobility.recentSessions) || 0))}" data-active-projects="${Math.max(0, Math.floor(Number(mobility.projectBreadth) || 0))}" data-vehicles="${vehicleCount}" data-pedestrians="${pedestrianCount}"><title>Traffic reflects recent sessions; pedestrians reflect active projects.</title>${vehicles}${pedestrians}</g>`

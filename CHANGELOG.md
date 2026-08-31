@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.2
+
+- Replace stick-figure pedestrians with four compact human silhouettes composed from distinct heads, hair, torsos, clothing, limbs, shoes, and occasional bags or backpacks.
+
 ## 0.7.1
 
 - Add `--motion-policy system|always` so published SVGs can either respect the viewer's reduced-motion preference or keep their city animation running explicitly.
