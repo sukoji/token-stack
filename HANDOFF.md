@@ -263,3 +263,31 @@
 ### Blockers
 
 - None.
+
+## 2026-08-31 - Skyline Atmosphere Presets v0.8.0
+
+### Work summary
+
+- Added restrained clear, cloudy, mist, rain, and snow treatments plus calendar-aware city seasons, all explicitly decorative and independent of usage metrics.
+- Added `default`, `rainy-noir`, `autumn-park`, `winter-transit`, and `evergreen-mist` presets while preserving the existing natural clear waterfront as the default.
+- Added the `preview` command, which renders all five presets from local activity into a responsive HTML comparison gallery.
+- Kept atmosphere deterministic and local with no location lookup, weather API, or network dependency; explicit CLI flags override preset values regardless of order.
+- Updated documentation, accessibility descriptions, CLI/render regression coverage, the city-options verifier, package version, changelog, and the tracked default Activity card.
+
+### Verification
+
+- `npm test`: 53 tests passed.
+- `npm run verify:skyline`: 88 renders passed across 11 profiles; largest SVG was 244,290 bytes.
+- `npm run verify:city`: all five atmosphere presets rendered successfully.
+- `npm run verify:pack`: package installed and executed successfully from a spaced Unicode path.
+- `npm pack --dry-run --json`: package `@sukojin/token-stack@0.8.0` validated at 54,922 bytes packed and 192,938 bytes unpacked.
+- Chromium visual QA covered the responsive live-data preset gallery and the final default card after its animation reveal.
+- `git diff --check` and staged credential-pattern scan passed.
+
+### Commits
+
+- `0089a41` - Add Skyline atmosphere presets.
+
+### Blockers
+
+- None.
