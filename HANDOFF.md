@@ -128,3 +128,30 @@
 ### Blockers
 
 - None.
+
+## 2026-08-31 - Architectural Activity Districts v0.6.0
+
+### Work summary
+
+- Replaced evenly distributed skyline density with one to five deterministic activity clusters derived from the selected token window; the same history still reproduces the same city.
+- Added glass, office, residential, masonry, and civic foreground architecture with type-specific roof profiles, facade divisions, balconies, cornices, and mechanical bands.
+- Added two-to-six tapered reflection segments per eligible foreground building and reduced the opacity of the broad reflected city mass.
+- Reworked the full Activity card header into labeled `TOKENS`, `EST. COST`, and `WINDOW` values.
+- Reworked the lower panel into a two-level visual key for building height/daily tokens, city density/active days, and green route/current streak.
+- Preserved compact output, `classic` rendering, deterministic geometry, construction animation, ambient motion, and reduced-motion behavior.
+
+### Verification
+
+- `npm test`: 41 tests passed.
+- `npm run verify:skyline`: 88 static reference renders passed across 11 profiles and four sky phases; largest recorded SVG was 243,859 bytes.
+- `npm run verify:pack`: package installed and executed successfully from a spaced Unicode path.
+- `npm pack --dry-run --json`: package `@sukojin/token-stack@0.6.0` validated at 44,819 bytes packed and 153,307 bytes unpacked.
+- Chromium visual QA completed for the live 6.64B-token, 25/30-active-day daylight card, including the labeled header, explanatory lower panel, clustered skyline, architecture details, and water reflections.
+
+### Commits
+
+- `144babc` - Compose architectural activity districts.
+
+### Blockers
+
+- None for v0.6.0. Codex still contributes session counts to the `agents` card but not token totals to token-based cards; adding Codex token ingestion remains a separate data-model feature.
