@@ -25,3 +25,28 @@
 ### Blockers
 
 - None.
+
+## 2026-08-31 - Layered Skyline v0.5.1
+
+### Work summary
+
+- Replaced the cinematic skyline's flat secondary row with deterministic rear and middle districts derived from token activity, while keeping the primary daily buildings in the foreground.
+- Added overlapping lot placement, depth-specific height and density sampling, atmosphere, glass sheen, podiums, shadows, and subtle grain so small foreground buildings can sit naturally in front of taller towers.
+- Preserved the `classic` single-plane style and zero-token behavior.
+- Audited Codex ingestion: Token Stack currently counts Codex sessions only. Recent local rollout files do expose token-count events, but Codex token totals are not yet included in the summary, models, or skyline.
+
+### Verification
+
+- `npm test`: 41 tests passed.
+- `npm run verify:skyline`: 88 renders passed across 11 profiles; largest SVG was 178,773 bytes.
+- `npm run verify:pack`: packed, installed, and executed successfully from a spaced Unicode path.
+- `npm pack --dry-run --json`: package `@sukojin/token-stack@0.5.1` validated at 41,220 bytes packed and 138,136 bytes unpacked.
+- Chromium visual QA completed for dawn, day, dusk, night, empty, compact, and current 30-day activity renders.
+
+### Commits
+
+- `f7d821c` - Render token activity as layered city districts.
+
+### Blockers
+
+- None for the skyline release. Codex token ingestion remains a separate follow-up because its supported log schema and aggregation semantics need to be defined.
