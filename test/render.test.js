@@ -30,13 +30,59 @@ test("skyline chart renders a night city for compact and activity cards", () => 
   assert.match(activity, /skyline-landmark/);
   assert.match(activity, /skyline-window/);
   assert.match(activity, /skyline-street/);
-  assert.match(activity, /class="f skyline-readout"/);
-  assert.match(activity, /HEIGHT = DAILY TOKENS/);
+  assert.match(activity, /class="f skyline-readout\b/);
+  assert.match(activity, /class="f skyline-header"/);
+  assert.match(activity, /DAILY TOKENS → HEIGHT/);
   assert.match(activity, /class="f skyline-greenway"[^>]+data-token-streak="4"/);
   assert.match(activity, /<desc>Building height represents daily tokens\./);
-  assert.match(activity, /<rect x="14" y="43" width="467" height="153" rx="7"\/>/);
+  assert.match(activity, /<rect x="14" y="31" width="467" height="148" rx="7"\/>/);
+  assert.match(activity, /class="skyline-legend-rule" d="M14 199H481"/);
   assert.match(activity, /clipPath id="skylineClip/);
   assert.match(activity, /clip-path="url\(#skylineClip/);
+});
+
+test("animated skyline grows its facade and windows from the street upward", () => {
+  const stats = {
+    totals: { total: 19_300_000, cost: 9, input: 19_300_000, output: 0, cacheRead: 0, cacheWrite: 0 },
+    byDay: [0, 800_000, 2_500_000, 6_000_000, 10_000_000].map((total, index) => ({ date: `2026-07-${String(index + 1).padStart(2, "0")}`, total, cost: 0 })),
+    streak: 4,
+  };
+  const animated = renderActivity(stats, { anim: true, chart: "skyline", sky: "night" });
+  assert.match(animated, /\.skyline-building-grow\{clip-path:inset\(100% 0 0 0\) fill-box;animation:skylineBuildingGrow/);
+  assert.match(animated, /@keyframes skylineBuildingGrow\{to\{clip-path:inset\(0 0 0 0\) fill-box\}\}/);
+  const stages = [...animated.matchAll(/<g class="skyline-building-stage" data-building-id="([^"]+)" clip-path="url\(#(skylineClip[^\)]+)\)"><g class="skyline-building-grow" style="animation-delay:([0-9.]+)s"><path class="skyline-building [^"]+" d="([^"]+)"/g)];
+  assert.ok(stages.length > 0);
+  for (const [, buildingId, clipId, stageDelay, path] of stages) {
+    assert.equal(clipId, `skylineClip${buildingId}`);
+    assert.match(animated, new RegExp(`<clipPath id="${clipId}"><path d="${path}"/>`));
+    assert.ok(Number(stageDelay) >= 0);
+  }
+  assert.match(animated, /<g class="skyline-building-grow" style="animation-delay:[0-9.]+s"><path class="skyline-building [^"]+"[^>]*\/><g class="skyline-facade">[\s\S]*?<g class="skyline-window-grid" data-build-order="bottom-up">/);
+  assert.doesNotMatch(animated, /skyline-window-grow|skylineWindowBuild/);
+
+  const staticSvg = renderActivity(stats, { anim: false, chart: "skyline", sky: "night" });
+  assert.doesNotMatch(staticSvg, /skylineBuildingGrow|clip-path:inset\(/);
+});
+
+test("skyline stars stay in place and use a slow reduced-motion-safe twinkle", () => {
+  const stats = {
+    totals: { total: 2_000_000, cost: 1, input: 2_000_000, output: 0, cacheRead: 0, cacheWrite: 0 },
+    byDay: [{ date: "2026-07-01", total: 2_000_000, cost: 1 }],
+    streak: 1,
+  };
+  const night = renderActivity(stats, { anim: true, chart: "skyline", sky: "night" });
+  assert.match(night, /\.sky-star\{opacity:\.18;animation:skylineStarTwinkle 10\.00s ease-in-out infinite\}/);
+  assert.match(night, /@keyframes skylineStarTwinkle\{0%,100%\{opacity:\.16\}50%\{opacity:\.52\}\}/);
+  assert.doesNotMatch(night, /skylineStarTwinkle[^@]*transform:/);
+  assert.match(night, /\.sky-star\{animation:none!important;opacity:\.3!important;transform:none!important\}/);
+  const starDelays = [...night.matchAll(/class="sky-star" style="animation-delay:(-[0-9.]+)s"/g)].map((match) => Number(match[1]));
+  assert.ok(starDelays.length > 0);
+  assert.ok(starDelays.every((delay) => delay <= 0 && delay >= -10));
+
+  const day = renderActivity(stats, { anim: true, chart: "skyline", sky: "day" });
+  assert.doesNotMatch(day, /class="sky-star"/);
+  const staticNight = renderActivity(stats, { anim: false, chart: "skyline", sky: "night" });
+  assert.doesNotMatch(staticNight, /skylineStarTwinkle|animation-delay:-/);
 });
 
 test("skyline city readout uses only daily token activity and stays accessible when compact", () => {
@@ -54,8 +100,8 @@ test("skyline city readout uses only daily token activity and stays accessible w
     activeDays: 999,
   };
   const full = renderActivity(stats, { anim: false, chart: "skyline", sky: "day" });
-  assert.match(full, /class="f skyline-readout"[^>]+data-active-days="4"[^>]+data-window-days="6"[^>]+data-token-streak="3"/);
-  assert.match(full, /HEIGHT = DAILY TOKENS · 4\/6 ACTIVE · GREEN PATH = 3D STREAK/);
+  assert.match(full, /class="f skyline-readout\b[^>]+data-active-days="4"[^>]+data-window-days="6"[^>]+data-token-streak="3"/);
+  assert.match(full, /DAILY TOKENS · 4\/6 ACTIVE · 3D STREAK/);
   assert.match(full, /class="f skyline-greenway"[^>]+data-token-streak="3"/);
   assert.match(full, /<title>3-day token streak<\/title>/);
   assert.doesNotMatch(full, /\b(?:GitHub|PR|contribution|language)\b/i);
@@ -71,7 +117,7 @@ test("skyline city readout uses only daily token activity and stays accessible w
 
   const windowFilled = { ...stats, byDay: byDay.slice(3), streak: 500 };
   const lowerBound = renderActivity(windowFilled, { anim: false, chart: "skyline", sky: "day" });
-  assert.match(lowerBound, /GREEN PATH = ≥3D STREAK/);
+  assert.match(lowerBound, /≥3D STREAK/);
   assert.match(lowerBound, /The token streak spans this entire window, so it is at least 3 days\./);
   const lowerBoundCompact = renderSummaryCompact(windowFilled, { anim: false, chart: "skyline", sky: "day" });
   assert.match(lowerBoundCompact, /≥3d token streak/);

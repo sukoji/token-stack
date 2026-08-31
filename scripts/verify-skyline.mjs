@@ -72,7 +72,7 @@ function expectedCitySignals(stats) {
   return { activeDays, windowDays: sourceDays.length, tokenStreak };
 }
 
-function assertHealthySvg(svg, { label, compact, sky, stats }) {
+function assertHealthySvg(svg, { label, compact, sky, stats, anim = false }) {
   assert.match(svg, /^<svg\b[\s\S]*<\/svg>$/, `${label}: incomplete SVG`);
   assert.doesNotMatch(svg, /\b(?:NaN|Infinity|undefined)\b/, `${label}: non-finite output`);
   assert.doesNotMatch(svg, /<(?:script|image)\b|(?:href|xlink:href)=["']https?:/i, `${label}: external or executable content`);
@@ -100,8 +100,17 @@ function assertHealthySvg(svg, { label, compact, sky, stats }) {
   }
 
   const clips = new Map([...svg.matchAll(/<clipPath id="(skylineClip[^"]+)"><path d="([^"]+)"\/><\/clipPath>/g)].map((match) => [match[1], match[2]]));
-  for (const match of svg.matchAll(/<path class="by skyline-building [^"]+"[^>]+d="([^"]+)"[^>]*\/><g clip-path="url\(#([^\)]+)\)"/g)) {
-    assert.equal(clips.get(match[2]), match[1], `${label}: facade clip does not match its building silhouette`);
+  const buildingStages = [...svg.matchAll(/<g class="skyline-building-stage" data-building-id="([^"]+)" clip-path="url\(#(skylineClip[^\)]+)\)"><g class="skyline-building-grow"(?: style="[^"]*")?><path class="skyline-building [^"]+" d="([^"]+)"/g)];
+  assert.equal(buildingStages.length, dimensions.length, `${label}: each foreground building needs one shared growth stage`);
+  for (const [, buildingId, clipId, buildingPath] of buildingStages) {
+    assert.equal(clipId, `skylineClip${buildingId}`, `${label}: building stage references the wrong silhouette clip`);
+    assert.equal(clips.get(clipId), buildingPath, `${label}: facade clip does not match its building silhouette`);
+  }
+  if (anim) {
+    assert.match(svg, /\.skyline-building-grow\{clip-path:inset\(100% 0 0 0\) fill-box;animation:skylineBuildingGrow/, `${label}: animated skyline lost its shared construction reveal`);
+    assert.doesNotMatch(svg, /class="skyline-window[^"]*" style="animation-delay:/, `${label}: animated skyline adds per-window delay bloat`);
+  } else {
+    assert.doesNotMatch(svg, /skyline-window-grow|skylineBuildingGrow|clip-path:inset\(/, `${label}: static skyline leaked animation-only window state`);
   }
 
   const landmarks = svg.match(/class="skyline-landmark"/g) ?? [];
@@ -112,15 +121,16 @@ function assertHealthySvg(svg, { label, compact, sky, stats }) {
   if (compact) {
     assert.doesNotMatch(svg, /skyline-readout|skyline-greenway|skyline-encoding/, `${label}: compact card should keep the scene clean`);
   } else {
-    const readouts = svg.match(/class="f skyline-readout"/g) ?? [];
+    const readouts = svg.match(/class="f skyline-readout\b/g) ?? [];
     assert.equal(readouts.length, 1, `${label}: full card needs one city readout`);
-    assert.match(svg, /HEIGHT = DAILY TOKENS/, `${label}: full card lost its height explanation`);
+    assert.match(svg, /DAILY TOKENS → HEIGHT/, `${label}: full card lost its height explanation`);
+    assert.match(svg, /class="skyline-legend-rule" d="M14 199H481"/, `${label}: full card lost its city legend band`);
     assert.match(svg, new RegExp(`data-active-days="${signals.activeDays}"`), `${label}: readout active-day count disagrees with daily token data`);
     assert.match(svg, new RegExp(`data-window-days="${signals.windowDays}"`), `${label}: readout window length disagrees with daily token data`);
     assert.match(svg, new RegExp(`data-token-streak="${signals.tokenStreak}"`), `${label}: readout streak disagrees with daily token data`);
     if (signals.tokenStreak) {
       const displayedStreak = signals.tokenStreak === signals.windowDays ? `≥${signals.tokenStreak}` : String(signals.tokenStreak);
-      assert.match(svg, new RegExp(`GREEN PATH = ${displayedStreak}D STREAK`), `${label}: readout must distinguish a full-window lower-bound streak`);
+      assert.match(svg, new RegExp(`${displayedStreak}D STREAK`), `${label}: readout must distinguish a full-window lower-bound streak`);
     }
     const greenways = svg.match(/class="f skyline-greenway"/g) ?? [];
     if (signals.tokenStreak) {
@@ -147,10 +157,12 @@ export function verifySkylineMatrix() {
       const full = renderActivity(item.stats, fullOptions);
       assert.equal(full, renderActivity(item.stats, fullOptions), `${item.id}/${sky}: renderer is not deterministic`);
       assertHealthySvg(full, { label: `${item.id}/${sky}/full`, compact: false, sky, stats: item.stats });
+      const animatedFull = renderActivity(item.stats, { ...fullOptions, anim: true });
+      assertHealthySvg(animatedFull, { label: `${item.id}/${sky}/full-animated`, compact: false, sky, stats: item.stats, anim: true });
       const geometry = [...full.matchAll(/<g class="skyline-(?:house|midrise|highrise|landmark)" data-height="[^"]+" data-width="[^"]+" data-score="[^"]+" data-density="[^"]+"/g)].map((match) => match[0]);
       if (fullGeometry) assert.deepEqual(geometry, fullGeometry, `${item.id}: sky phase changed city geometry`);
       else fullGeometry = geometry;
-      const readout = full.match(/<g class="f skyline-readout"[^>]+>/)?.[0] ?? "";
+      const readout = full.match(/<g class="f skyline-readout\b[^>]+>/)?.[0] ?? "";
       if (fullReadout) assert.equal(readout, fullReadout, `${item.id}: sky phase changed city semantics`);
       else fullReadout = readout;
       const maxDaily = Math.max(...item.stats.byDay.map((day) => day.total), 0);
@@ -165,6 +177,8 @@ export function verifySkylineMatrix() {
       const compact = renderSummaryCompact(item.stats, compactOptions);
       assert.equal(compact, renderSummaryCompact(item.stats, compactOptions), `${item.id}/${sky}/compact: renderer is not deterministic`);
       assertHealthySvg(compact, { label: `${item.id}/${sky}/compact`, compact: true, sky, stats: item.stats });
+      const animatedCompact = renderSummaryCompact(item.stats, { ...compactOptions, anim: true });
+      assertHealthySvg(animatedCompact, { label: `${item.id}/${sky}/compact-animated`, compact: true, sky, stats: item.stats, anim: true });
       results.push({ id: item.id, sky, layout: "compact", bytes: Buffer.byteLength(compact), landmarks: compact.match(/class="skyline-landmark"/g)?.length ?? 0 });
     }
   }

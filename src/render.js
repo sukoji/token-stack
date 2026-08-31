@@ -58,11 +58,11 @@ function citySignals(days, sourceDayCount) {
       ? `The token streak spans this entire window, so it is at least ${tokenStreak} days.`
       : `The current token streak is ${tokenStreak} days.`;
   const readout = !windowDays
-    ? "HEIGHT = DAILY TOKENS · NO TOKEN WINDOW"
+    ? "DAILY TOKENS · NO TOKEN WINDOW"
     : [
-      "HEIGHT = DAILY TOKENS",
+      "DAILY TOKENS",
       `${activeDays}/${windowDays} ACTIVE`,
-      tokenStreak ? `GREEN PATH = ${tokenStreakDisplay}D STREAK` : "GREEN PATH = NO STREAK",
+      tokenStreak ? `${tokenStreakDisplay}D STREAK` : "NO STREAK",
     ].join(" · ");
   const description = !windowDays
     ? "Building height represents daily tokens. No token days were supplied for this window."
@@ -102,7 +102,7 @@ function styles({ anim, speed }, extra = "") {
 .by{transform:scaleY(0);transform-box:fill-box;transform-origin:center bottom;animation:gy ${s(0.8)} cubic-bezier(.2,.6,.2,1) forwards}
 @keyframes gy{to{transform:scaleY(1)}}
 ${extra}
-@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important}.sky-star{animation:none!important;opacity:.3!important;transform:none!important}}
 </style>`;
 }
 
@@ -375,6 +375,13 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
     const path = skylineShape(tier, shape, left, width, base, height);
     const clipId = `skylineClip${id}`;
     const top = base - height;
+    // One stage owns both the silhouette and all facade detail. Growing only
+    // the path leaves its windows suspended at their final coordinates while
+    // the building is still short. The outer SVG clip locks every detail to
+    // the exact silhouette; the inner CSS clip reveals that whole stage from
+    // the street upward without vertically stretching window rectangles.
+    const stageClass = "skyline-building-grow";
+    const stageStyle = anim ? ` style="${delay(delayIndex, .025, speed)}"` : "";
     defs.push(`<clipPath id="${clipId}"><path d="${path}"/></clipPath>`);
     const facadeWidth = Math.max(1, width * (tier === "landmark" ? 0.24 : 0.18));
     const face = `<rect x="${(left + width - facadeWidth).toFixed(1)}" y="${top.toFixed(1)}" width="${facadeWidth.toFixed(1)}" height="${height.toFixed(1)}" fill="#101827" fill-opacity="${phase.name === "day" ? ".12" : ".24"}"/>`;
@@ -424,7 +431,7 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
     } else if (width >= 3.5) {
       windows = `<path d="M${(left + width * .5).toFixed(1)} ${top + 4}V${base - 3}" stroke="${phase.window}" stroke-opacity=".35" stroke-width=".7"/>`;
     }
-    foreground.push(`<g class="skyline-${tier}" data-height="${height.toFixed(1)}" data-width="${width.toFixed(1)}" data-score="${score.toFixed(3)}" data-density="${density.toFixed(3)}"><title>${esc(label)}</title><path class="by skyline-building skyline-${tier}-${shape % 5}" style="${delay(delayIndex, .025, speed)}" d="${path}" fill="${color}" fill-opacity="${opacity}"/><g clip-path="url(#${clipId})">${face}${facadeLines}${crownBand}${windows}</g></g>`);
+    foreground.push(`<g class="skyline-${tier}" data-height="${height.toFixed(1)}" data-width="${width.toFixed(1)}" data-score="${score.toFixed(3)}" data-density="${density.toFixed(3)}"><title>${esc(label)}</title><g class="skyline-building-stage" data-building-id="${id}" clip-path="url(#${clipId})"><g class="${stageClass}"${stageStyle}><path class="skyline-building skyline-${tier}-${shape % 5}" d="${path}" fill="${color}" fill-opacity="${opacity}"/><g class="skyline-facade">${face}${facadeLines}${crownBand}<g class="skyline-window-grid" data-build-order="bottom-up">${windows}</g></g></g></g></g>`);
     if (waterDepth && tier !== "house" && density > .04) {
       const reflectionHeight = Math.min(waterDepth - 3, Math.max(2, height * (tier === "landmark" ? .18 : tier === "highrise" ? .13 : .09)));
       const segments = tier === "landmark" || tier === "highrise" ? 3 : 2;
@@ -575,11 +582,16 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
     });
   }
 
+  const starCycle = Math.max(6, 10 / speed);
   const stars = phase.stars ? Array.from({ length: detail ? 20 : 10 }, (_, i) => {
     const sx = x + 12 + skylineHash(i * 67 + 19) * Math.max(20, w - 24);
     const sy = y + 9 + skylineHash(i * 83 + 41) * Math.max(12, Math.floor(h * .38));
     const radius = skylineHash(i * 101 + 7) > .72 ? 1.2 : .72;
-    return `<circle class="sky-star" style="${delay(i, .08, speed)}" cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${radius}" fill="${phase.window}"/>`;
+    // Start each star at a deterministic point in a slow opacity cycle. A
+    // negative delay prevents a left-to-right "star run" on first paint.
+    const phaseDelay = -skylineHash(i * 149 + 53) * starCycle;
+    const starStyle = anim ? ` style="animation-delay:${phaseDelay.toFixed(2)}s"` : "";
+    return `<circle class="sky-star"${starStyle} cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${radius}" fill="${phase.window}"/>`;
   }).join("") : "";
   const clouds = phase.name === "day" || phase.name === "dawn" ? `<g class="f" style="${delay(1, .1, speed)}" fill="#ffffff" fill-opacity="${phase.name === "day" ? ".2" : ".16"}"><path d="M${(x + w * .08).toFixed(1)} ${(y + h * .25).toFixed(1)}c${(w * .022).toFixed(1)} -${(h * .09).toFixed(1)} ${(w * .065).toFixed(1)} -${(h * .09).toFixed(1)} ${(w * .084).toFixed(1)} 0c${(w * .022).toFixed(1)} -${(h * .055).toFixed(1)} ${(w * .072).toFixed(1)} -${(h * .045).toFixed(1)} ${(w * .084).toFixed(1)} ${(h * .035).toFixed(1)}H${(x + w * .26).toFixed(1)}c-${(w * .018).toFixed(1)} ${(h * .055).toFixed(1)} -${(w * .14).toFixed(1)} ${(h * .055).toFixed(1)} -${(w * .18).toFixed(1)} 0Z"/><path d="M${(x + w * .63).toFixed(1)} ${(y + h * .34).toFixed(1)}c${(w * .018).toFixed(1)} -${(h * .07).toFixed(1)} ${(w * .055).toFixed(1)} -${(h * .065).toFixed(1)} ${(w * .07).toFixed(1)} 0c${(w * .022).toFixed(1)} -${(h * .05).toFixed(1)} ${(w * .06).toFixed(1)} -${(h * .035).toFixed(1)} ${(w * .075).toFixed(1)} ${(h * .025).toFixed(1)}H${(x + w * .8).toFixed(1)}c-${(w * .014).toFixed(1)} ${(h * .045).toFixed(1)} -${(w * .12).toFixed(1)} ${(h * .045).toFixed(1)} -${(w * .17).toFixed(1)} 0Z"/></g>` : "";
   const fabric = `<polygon class="skyline-fabric" points="${x},${base} ${fabricPoints.join(" ")} ${x + w},${base}" fill="${phase.palette.midrise[0]}" fill-opacity=".42"/>`;
@@ -607,7 +619,8 @@ function chartSkylineContinuous(days, t, box, { anim, speed, sky = "auto", now, 
     })()
     : "";
   const svg = `<defs><linearGradient id="skylineSky" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${phase.sky[0]}"/><stop offset=".58" stop-color="${phase.sky[1]}"/><stop offset="1" stop-color="${phase.sky[2]}"/></linearGradient><linearGradient id="skylineWater" x1="0" y1="0" x2="0" y2="1"><stop stop-color="${waterColors[0]}"/><stop offset="1" stop-color="${waterColors[1]}"/></linearGradient><radialGradient id="skylineLuminary"><stop stop-color="#fffde1"/><stop offset="1" stop-color="${phase.luminary}"/></radialGradient>${defs.join("")}</defs><g clip-path="url(#skylineScene)"><rect data-sky="${phase.name}" data-city-scale="${cityScale.toFixed(3)}" x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="url(#skylineSky)"/>${clouds}${stars}${moonHalo}<circle class="f skyline-luminary" style="${delay(2, .12, speed)}" cx="${luminaryX}" cy="${luminaryY}" r="${luminaryR}" fill="url(#skylineLuminary)"/>${background.join("")}${fabric}${water}${reflections.join("")}${foreground.join("")}${street}${greenway}</g>`;
-  const extraCss = anim ? `.sky-star{opacity:0;animation:twinkle ${(1.8 / speed).toFixed(2)}s ease-in-out infinite}.skyline-fabric{opacity:0;animation:fu ${(0.7 / speed).toFixed(2)}s cubic-bezier(.4,0,.2,1) forwards}@keyframes twinkle{50%{opacity:.3;transform:scale(.55)}}` : "";
+  const starCss = phase.stars ? `.sky-star{opacity:.18;animation:skylineStarTwinkle ${starCycle.toFixed(2)}s ease-in-out infinite}@keyframes skylineStarTwinkle{0%,100%{opacity:.16}50%{opacity:.52}}` : "";
+  const extraCss = anim ? `${starCss}.skyline-fabric{opacity:0;animation:fu ${(0.7 / speed).toFixed(2)}s cubic-bezier(.4,0,.2,1) forwards}.skyline-building-grow{clip-path:inset(100% 0 0 0) fill-box;animation:skylineBuildingGrow ${(0.8 / speed).toFixed(2)}s cubic-bezier(.2,.6,.2,1) forwards}@keyframes skylineBuildingGrow{to{clip-path:inset(0 0 0 0) fill-box}}` : "";
   return { svg, extraCss };
 }
 
@@ -725,11 +738,16 @@ export function renderActivity(stats, opts = {}) {
   const W = 495, H = 220;
   const skylineLayout = chart === "skyline";
   const signals = skylineLayout ? citySignals(days, sourceDays.length) : null;
+  const skylinePhase = skylineLayout ? resolveSkyPhase(opts.sky, opts.now) : null;
+  const displayTitle = skylineLayout && String(title).length > 25
+    ? `${String(title).slice(0, 24)}…`
+    : String(title);
   const chartX = skylineLayout ? 14 : 25;
   const chartW = W - chartX * 2;
-  const baseY = skylineLayout ? 196 : 178;
-  const chartH = skylineLayout ? 153 : 108;
-  const headerY = skylineLayout ? 25 : 33;
+  const baseY = skylineLayout ? 179 : 178;
+  const chartH = skylineLayout ? 148 : 108;
+  const headerY = skylineLayout ? 20 : 33;
+  const dateY = skylineLayout ? 212 : baseY + 18;
   const windowTotal = days.reduce((a, d) => a + d.total, 0);
   const windowCost = days.reduce((a, d) => a + d.cost, 0);
   const drawChart = chart === "skyline" ? chartSkylineContinuous : chartBars;
@@ -741,17 +759,25 @@ export function renderActivity(stats, opts = {}) {
     tokenStreak: signals?.tokenStreak,
   });
   const skylineReadout = signals
-    ? `<g class="f skyline-readout" style="${delay(2, .1, speed)}" data-rhythm="${signals.rhythm}" data-active-days="${signals.activeDays}" data-window-days="${signals.windowDays}" data-token-streak="${signals.tokenStreak}"><title>Building height represents daily tokens. ${signals.readout}</title><rect x="25" y="35" width="2.5" height="4" rx=".6" fill="${t.big[0]}"/><rect x="29" y="32" width="2.5" height="7" rx=".6" fill="${t.big[0]}"/><rect x="33" y="29" width="2.5" height="10" rx=".6" fill="${t.big[1]}"/><text x="42" y="39" font-size="8.6" font-weight="600" letter-spacing=".04" fill="${t.subtext}">${esc(signals.readout)}</text></g>`
+    ? (() => {
+      const streakLabel = signals.tokenStreak ? `${signals.tokenStreakDisplay}D` : "NO";
+      const streakColor = skylinePhase?.grass ?? t.big[1];
+      return `<g class="f skyline-readout skyline-legend" style="${delay(2, .1, speed)}" data-rhythm="${signals.rhythm}" data-active-days="${signals.activeDays}" data-window-days="${signals.windowDays}" data-token-streak="${signals.tokenStreak}"><title>Building height represents daily tokens. ${signals.readout}</title><g class="skyline-legend-height"><rect x="25" y="186" width="2.5" height="5" rx=".55" fill="${t.big[0]}"/><rect x="29" y="184" width="2.5" height="7" rx=".55" fill="${t.big[0]}"/><rect x="33" y="182" width="2.5" height="9" rx=".55" fill="${t.big[1]}"/><text x="41" y="192" font-size="7.9" font-weight="600" letter-spacing=".18" fill="${t.subtext}">DAILY TOKENS → HEIGHT</text></g><g class="skyline-legend-active"><circle cx="205" cy="188.5" r="2.25" fill="${t.big[0]}" fill-opacity=".84"/><text x="212" y="192" font-size="8" font-weight="600" letter-spacing=".16" fill="${t.subtext}"><tspan fill="${t.title}">${signals.activeDays}/${signals.windowDays}</tspan> ACTIVE</text></g><g class="skyline-legend-streak"><path d="M382 188.5H399" stroke="${streakColor}" stroke-width="1.8" stroke-linecap="round"/><circle cx="399" cy="188.5" r="1.45" fill="${streakColor}"/><text x="470" y="192" font-size="8" font-weight="600" letter-spacing=".16" text-anchor="end" fill="${t.subtext}"><tspan fill="${streakColor}">${streakLabel}</tspan> STREAK</text></g><path class="skyline-legend-rule" d="M14 199H481" stroke="${t.border}" stroke-opacity=".48" stroke-width=".7"/></g>`;
+    })()
+    : "";
+  const skylineHeader = skylineLayout
+    ? `<g class="f skyline-header"><g class="skyline-title-mark"><rect x="25" y="13" width="2.6" height="6" rx=".5" fill="${t.big[0]}"/><rect x="29" y="10" width="2.6" height="9" rx=".5" fill="${t.big[0]}"/><rect x="33" y="7" width="2.6" height="12" rx=".5" fill="${t.big[1]}"/></g><text x="45" y="20" font-size="13" font-weight="650" letter-spacing=".08" fill="${t.title}">${esc(displayTitle)}</text></g><text class="f skyline-header-metric" style="${delay(1, .12, speed)}" x="470" y="20" font-size="10.5" text-anchor="end" fill="${t.subtext}">${formatTokens(windowTotal)} · ${formatCost(windowCost)} · ${sourceDays.length}d</text>`
     : "";
 
   const body = `
 <g font-family="'Segoe UI',Ubuntu,Sans-Serif">
-<text class="f" x="25" y="${headerY}" font-size="${skylineLayout ? "15" : "16"}" font-weight="600" fill="${t.title}">📊 ${esc(title)}</text>
-<text class="f" style="${delay(1, 0.12, speed)}" x="${W - 25}" y="${headerY}" font-size="${skylineLayout ? "11" : "12"}" text-anchor="end" fill="${t.subtext}">${formatTokens(windowTotal)} · ${formatCost(windowCost)} · ${sourceDays.length}d</text>
+${skylineHeader}
+${skylineLayout ? "" : `<text class="f" x="25" y="${headerY}" font-size="16" font-weight="600" fill="${t.title}">📊 ${esc(title)}</text>`}
+${skylineLayout ? "" : `<text class="f" style="${delay(1, 0.12, speed)}" x="${W - 25}" y="${headerY}" font-size="12" text-anchor="end" fill="${t.subtext}">${formatTokens(windowTotal)} · ${formatCost(windowCost)} · ${sourceDays.length}d</text>`}
 ${skylineReadout}
 ${chartSvg}
-<text x="${chartX}" y="${baseY + (skylineLayout ? 17 : 18)}" font-size="10" fill="${t.subtext}">${esc(days[0]?.date ?? "")}</text>
-<text x="${chartX + chartW}" y="${baseY + (skylineLayout ? 17 : 18)}" font-size="10" text-anchor="end" fill="${t.subtext}">${esc(days[days.length - 1]?.date ?? "")}</text>
+<text x="${chartX}" y="${dateY}" font-size="${skylineLayout ? "9.7" : "10"}" fill="${t.subtext}">${esc(days[0]?.date ?? "")}</text>
+<text x="${chartX + chartW}" y="${dateY}" font-size="${skylineLayout ? "9.7" : "10"}" text-anchor="end" fill="${t.subtext}">${esc(days[days.length - 1]?.date ?? "")}</text>
 </g>`;
   return frame(W, H, t, title, body, styles({ anim, speed }, extraCss), opts.scale, signals?.description);
 }
