@@ -103,6 +103,28 @@
 
 - None.
 
+## 2026-09-04 - Public Launch Surface and README Cleanup
+
+### Work summary
+
+- Published the v0.8.0 GitHub release and updated repository metadata for Claude Code, Codex, local-first, developer-tool, privacy, SVG, and data-visualization discovery.
+- Rewrote the README around the install path, data boundaries, card choices, Skyline semantics, presets, and common CLI usage.
+- Removed repeated implementation narrative and marketing-heavy prose while preserving behavior, privacy, cost, compatibility, and accessibility caveats.
+
+### Verification
+
+- Reviewed every retained command and option against the v0.8.0 CLI help and current README behavior.
+- `npm test`: 53 tests passed.
+- `git diff --check` passed before commit.
+
+### Commits
+
+- Pending.
+
+### Blockers
+
+- External community posts require the maintainer's account-level submission on each platform.
+
 ## 2026-08-31 - Realistic Atmospheric Depth v0.5.4
 
 ### Work summary
