@@ -119,7 +119,7 @@
 
 ### Commits
 
-- Pending.
+- `7bdd520` - Sharpen public README.
 
 ### Blockers
 
